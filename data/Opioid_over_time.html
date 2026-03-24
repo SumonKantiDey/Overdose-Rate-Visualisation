@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Opioid Visualizations</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://unpkg.com/topojson-client@3"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+    .county-label {
+    font-size: 7px;
+    text-anchor: middle;
+    fill: white;
+    pointer-events: none;
+    }
+    .chart-title {
+      font-size: 20px;
+      font-weight: bold;
+      text-anchor: middle;
+    }
+
+    .axis-label {
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    .line {
+      fill: none;
+      stroke-width: 3;
+    }
+
+    .county {
+      stroke: gray;
+      stroke-width: 0.5px;
+    }
+
+    .county:hover {
+      stroke: #000;
+      stroke-width: 1.2px;
+    }
+
+    .legend-label {
+      font-size: 12px;
+    }
+
+    .map-title {
+      font-size: 16px;
+      font-weight: bold;
+      text-anchor: middle;
+    }
+
+    .tooltip {
+      position: absolute;
+      background: white;
+      border: 1px solid #999;
+      padding: 8px;
+      font-size: 12px;
+      pointer-events: none;
+      opacity: 0;
+    }
+  </style>
+</head>
+<body>
+  <svg id="chart1" width="900" height="500"></svg>
+  <svg id="chart2" width="1200" height="700"></svg>
+  <div id="tooltip" class="tooltip"></div>
+
+  <script>
+    function cleanNumber(value) {
+    if (value === null || value === undefined) return 0;
+
+    const str = String(value).toLowerCase().trim();
+
+    if (
+        str === "" ||
+        str === "suppressed" ||
+        str === "na" ||
+        str === "n/a"
+    ) return 0;
+
+    return +str.replace(/,/g, "") || 0;
+    }
+
+    Promise.all([
+      d3.csv("clean_drug_overdose_death.csv"),
+      d3.json("https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json")
+    ]).then(([data, us]) => {
+
+//graph 1
+      const opioidCountCols = [
+        "Opioid Death Count (2010-2013)",
+        "Opioid Death Count (2014-2017)",
+        "Opioid Death Count (2018-2021)"
+      ];
+
+      const periods1 = ["2010-2013", "2014-2017", "2018-2021"];
+
+      const totals = periods1.map((period, i) => ({
+        period: period,
+        deaths: d3.sum(data, d => cleanNumber(d[opioidCountCols[i]]))
+      }));
+
+      const svg1 = d3.select("#chart1");
+      const width1 = +svg1.attr("width");
+      const height1 = +svg1.attr("height");
+
+      const margin1 = { top: 60, right: 40, bottom: 70, left: 100 };
+      const innerWidth1 = width1 - margin1.left - margin1.right;
+      const innerHeight1 = height1 - margin1.top - margin1.bottom;
+
+      const g1 = svg1.append("g")
+        .attr("transform", `translate(${margin1.left},${margin1.top})`);
+
+      const x1 = d3.scalePoint()
+        .domain(periods1)
+        .range([0, innerWidth1])
+        .padding(0.5);
+
+      const y1 = d3.scaleLinear()
+        .domain([0, d3.max(totals, d => d.deaths)])
+        .nice()
+        .range([innerHeight1, 0]);
+
+      g1.append("g")
+        .attr("transform", `translate(0,${innerHeight1})`)
+        .call(d3.axisBottom(x1));
+
+      g1.append("g")
+        .call(d3.axisLeft(y1));
+
+      const line1 = d3.line()
+        .x(d => x1(d.period))
+        .y(d => y1(d.deaths));
+
+      g1.append("path")
+        .datum(totals)
+        .attr("class", "line")
+        .attr("stroke", "steelblue")
+        .attr("d", line1);
+
+      g1.selectAll(".dot1")
+        .data(totals)
+        .enter()
+        .append("circle")
+        .attr("cx", d => x1(d.period))
+        .attr("cy", d => y1(d.deaths))
+        .attr("r", 5)
+        .attr("fill", "steelblue");
+
+      g1.selectAll(".label1")
+        .data(totals)
+        .enter()
+        .append("text")
+        .attr("x", d => x1(d.period))
+        .attr("y", d => y1(d.deaths) - 10)
+        .attr("text-anchor", "middle")
+        .text(d => d.deaths);
+
+      svg1.append("text")
+        .attr("class", "chart-title")
+        .attr("x", width1 / 2)
+        .attr("y", 30)
+        .text("Total Opioid Deaths Over Time");
+
+      svg1.append("text")
+        .attr("class", "axis-label")
+        .attr("x", width1 / 2)
+        .attr("y", height1 - 20)
+        .attr("text-anchor", "middle")
+        .text("Time Period");
+
+      svg1.append("text")
+        .attr("class", "axis-label")
+        .attr("transform", "rotate(-90)")
+        .attr("x", -height1 / 2)
+        .attr("y", 20)
+        .attr("text-anchor", "middle")
+        .text("Total Opioid Deaths");
+//graph 2
+      const svg2 = d3.select("#chart2");
+      const width2 = +svg2.attr("width");
+      const height2 = +svg2.attr("height");
+      const tooltip = d3.select("#tooltip");
+
+      const bachelorsCol =
+        "Percent of Population Aged 25+ who Have a Bachelor's Degree or More (2017-2021)";
+      const opioidRateCol =
+        "Crude Opioid Death Rate (2018-2021)";
+
+      const dataByGEOID = new Map();
+      data.forEach(d => {
+        const geoid = String(d.GEOID).padStart(5, "0");
+        dataByGEOID.set(geoid, {
+          name: d.NAME,
+          bachelors: cleanNumber(d[bachelorsCol]),
+          opioidRate: cleanNumber(d[opioidRateCol])
+        });
+      });
+
+      const counties = topojson.feature(us, us.objects.counties).features;
+      const georgiaCounties = counties.filter(d => String(d.id).startsWith("13"));
+
+      const projection = d3.geoMercator();
+      const path = d3.geoPath(projection);
+
+      projection.fitSize(
+        [430, 620],
+        {
+          type: "FeatureCollection",
+          features: georgiaCounties
+        }
+      );
+
+      const leftMapX = 70;
+      const rightMapX = 670;
+      const mapY = 95;
+
+      const mapGroup1 = svg2.append("g")
+        .attr("transform", `translate(${leftMapX},${mapY})`);
+
+      const mapGroup2 = svg2.append("g")
+        .attr("transform", `translate(${rightMapX},${mapY})`);
+
+      const bachelorsMax = d3.max(georgiaCounties, d => {
+        const row = dataByGEOID.get(String(d.id));
+        return row ? row.bachelors : 0;
+      }) || 1;
+
+      const opioidRateMax = d3.max(georgiaCounties, d => {
+        const row = dataByGEOID.get(String(d.id));
+        return row ? row.opioidRate : 0;
+      }) || 1;
+
+      const bachelorsColor = d3.scaleSequential()
+        .domain([0, bachelorsMax])
+        .interpolator(d3.interpolateBlues);
+
+      const opioidColor = d3.scaleSequential()
+        .domain([0, opioidRateMax])
+        .interpolator(d3.interpolateBlues);
+
+      svg2.append("text")
+        .attr("class", "chart-title")
+        .attr("x", width2 / 2)
+        .attr("y", 30)
+        .text("Georgia Counties: Education and Opioid Death Rates");
+
+      svg2.append("text")
+        .attr("class", "map-title")
+        .attr("x", leftMapX + 215)
+        .attr("y", 70)
+        .text("Bachelor's Degree Share (2017-2021)");
+
+      svg2.append("text")
+        .attr("class", "map-title")
+        .attr("x", rightMapX + 215)
+        .attr("y", 70)
+        .text("Crude Opioid Death Rate (2018-2021)");
+
+      mapGroup1.selectAll("path")
+        .data(georgiaCounties)
+        .enter()
+        .append("path")
+        .attr("class", "county")
+        .attr("d", path)
+        .attr("fill", d => {
+          const row = dataByGEOID.get(String(d.id));
+          return row ? bachelorsColor(row.bachelors) : "#eee";
+        })
+        .on("mousemove", function(event, d) {
+          const row = dataByGEOID.get(String(d.id));
+          tooltip
+            .style("opacity", 1)
+            .html(`
+              <strong>${row ? row.name : "Unknown County"}</strong><br>
+              Bachelor's %: ${row ? row.bachelors.toFixed(2) : "N/A"}<br>
+              Opioid Death Rate: ${row ? row.opioidRate.toFixed(2) : "N/A"} per 100k
+            `)
+            .style("left", (event.pageX + 12) + "px")
+            .style("top", (event.pageY - 28) + "px");
+        })
+        .on("mouseleave", function() {
+          tooltip.style("opacity", 0);
+        });
+
+      mapGroup1.selectAll(".label-left")
+        .data(georgiaCounties)
+        .enter()
+        .append("text")
+        .attr("class", "county-label")
+        .attr("transform", d => {
+          const centroid = path.centroid(d);
+          return `translate(${centroid[0]},${centroid[1]})`;
+        })
+        .text(d => {
+          const row = dataByGEOID.get(String(d.id));
+          if (!row || row.opioidRate === 0) return "";
+          return row.opioidRate.toFixed(1);
+        });
+
+      mapGroup2.selectAll("path")
+        .data(georgiaCounties)
+        .enter()
+        .append("path")
+        .attr("class", "county")
+        .attr("d", path)
+        .attr("fill", d => {
+          const row = dataByGEOID.get(String(d.id));
+          return row ? opioidColor(row.opioidRate) : "#eee";
+        })
+        .on("mousemove", function(event, d) {
+          const row = dataByGEOID.get(String(d.id));
+          tooltip
+            .style("opacity", 1)
+            .html(`
+              <strong>${row ? row.name : "Unknown County"}</strong><br>
+              Bachelor's %: ${row ? row.bachelors.toFixed(2) : "N/A"}<br>
+              Opioid Death Rate: ${row ? row.opioidRate.toFixed(2) : "N/A"} per 100k
+            `)
+            .style("left", (event.pageX + 12) + "px")
+            .style("top", (event.pageY - 28) + "px");
+        })
+        .on("mouseleave", function() {
+          tooltip.style("opacity", 0);
+        });
+
+      mapGroup2.selectAll(".label-right")
+        .data(georgiaCounties)
+        .enter()
+        .append("text")
+        .attr("class", "county-label")
+        .attr("transform", d => {
+          const centroid = path.centroid(d);
+          return `translate(${centroid[0]},${centroid[1]})`;
+        })
+        .text(d => {
+          const row = dataByGEOID.get(String(d.id));
+          return row ? row.opioidRate.toFixed(1) : "";
+        });
+
+      function drawLegend(svg, x, y, width, height, colorScale, maxValue, label, gradientId) {
+        const defs = svg.select("defs").empty() ? svg.append("defs") : svg.select("defs");
+
+        const gradient = defs.append("linearGradient")
+          .attr("id", gradientId)
+          .attr("x1", "0%")
+          .attr("x2", "100%")
+          .attr("y1", "0%")
+          .attr("y2", "0%");
+
+        const steps = 10;
+        for (let i = 0; i <= steps; i++) {
+          const t = i / steps;
+          gradient.append("stop")
+            .attr("offset", `${t * 100}%`)
+            .attr("stop-color", colorScale(t * maxValue));
+        }
+
+        svg.append("rect")
+          .attr("x", x)
+          .attr("y", y)
+          .attr("width", width)
+          .attr("height", height)
+          .style("fill", `url(#${gradientId})`)
+          .style("stroke", "#999");
+
+        const legendScale = d3.scaleLinear()
+          .domain([0, maxValue])
+          .range([0, width]);
+
+        svg.append("g")
+          .attr("transform", `translate(${x},${y + height})`)
+          .call(d3.axisBottom(legendScale).ticks(5));
+
+        svg.append("text")
+          .attr("class", "legend-label")
+          .attr("x", x + width / 2)
+          .attr("y", y - 8)
+          .attr("text-anchor", "middle")
+          .text(label);
+      }
+
+      drawLegend(
+        svg2,
+        leftMapX + 70,
+        750,
+        220,
+        14,
+        bachelorsColor,
+        bachelorsMax,
+        "Bachelor's Degree Share (%)",
+        "bachelors-gradient"
+      );
+
+      drawLegend(
+        svg2,
+        rightMapX + 70,
+        750,
+        220,
+        14,
+        opioidColor,
+        opioidRateMax,
+        "Opioid Death Rate per 100k",
+        "opioid-gradient"
+      );
+
+    }).catch(error => {
+      console.error("Error loading data:", error);
+    });
+  </script>
+</body>
+</html>
