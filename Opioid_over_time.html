@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Opioid Visualizations</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+
+    .chart-title {
+      font-size: 20px;
+      font-weight: bold;
+      text-anchor: middle;
+    }
+
+    .axis-label {
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    .line {
+      fill: none;
+      stroke-width: 3;
+    }
+
+    .dot {
+      r: 5;
+    }
+
+    .legend text {
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <svg id="chart1" width="900" height="500"></svg>
+  <svg id="chart2" width="900" height="500"></svg>
+
+  <script>
+    function cleanNumber(value) {
+      if (value === null || value === undefined || value === "") return 0;
+      return +String(value).replace(/,/g, "").trim() || 0;
+    }
+
+    d3.csv("clean_drug_overdose_death.csv").then(data => {
+      console.log("Loaded data:", data);
+      console.log("Columns:", data.columns);
+
+//chart 1
+      const opioidCountCols = [
+        "Opioid Death Count (2010-2013)",
+        "Opioid Death Count (2014-2017)",
+        "Opioid Death Count (2018-2021)"
+      ];
+
+      const periods1 = ["2010-2013", "2014-2017", "2018-2021"];
+
+      const totals = periods1.map((period, i) => ({
+        period: period,
+        deaths: d3.sum(data, d => cleanNumber(d[opioidCountCols[i]]))
+      }));
+
+      const svg1 = d3.select("#chart1");
+      const width1 = +svg1.attr("width");
+      const height1 = +svg1.attr("height");
+
+      const margin1 = { top: 60, right: 40, bottom: 70, left: 100 };
+      const innerWidth1 = width1 - margin1.left - margin1.right;
+      const innerHeight1 = height1 - margin1.top - margin1.bottom;
+
+      const g1 = svg1.append("g")
+        .attr("transform", `translate(${margin1.left},${margin1.top})`);
+
+      const x1 = d3.scalePoint()
+        .domain(periods1)
+        .range([0, innerWidth1])
+        .padding(0.5);
+
+      const y1 = d3.scaleLinear()
+        .domain([0, d3.max(totals, d => d.deaths)])
+        .nice()
+        .range([innerHeight1, 0]);
+
+      g1.append("g")
+        .attr("transform", `translate(0,${innerHeight1})`)
+        .call(d3.axisBottom(x1));
+
+      g1.append("g")
+        .call(d3.axisLeft(y1));
+
+      const line1 = d3.line()
+        .x(d => x1(d.period))
+        .y(d => y1(d.deaths));
+
+      g1.append("path")
+        .datum(totals)
+        .attr("class", "line")
+        .attr("stroke", "steelblue")
+        .attr("d", line1);
+
+      g1.selectAll(".dot1")
+        .data(totals)
+        .enter()
+        .append("circle")
+        .attr("class", "dot")
+        .attr("cx", d => x1(d.period))
+        .attr("cy", d => y1(d.deaths))
+        .attr("r", 5)
+        .attr("fill", "steelblue");
+
+      g1.selectAll(".label1")
+        .data(totals)
+        .enter()
+        .append("text")
+        .attr("x", d => x1(d.period))
+        .attr("y", d => y1(d.deaths) - 10)
+        .attr("text-anchor", "middle")
+        .text(d => d.deaths);
+
+      svg1.append("text")
+        .attr("class", "chart-title")
+        .attr("x", width1 / 2)
+        .attr("y", 30)
+        .text("Total Opioid Deaths Over Time");
+
+      svg1.append("text")
+        .attr("class", "axis-label")
+        .attr("x", width1 / 2)
+        .attr("y", height1 - 20)
+        .attr("text-anchor", "middle")
+        .text("Time Period");
+
+      svg1.append("text")
+        .attr("class", "axis-label")
+        .attr("transform", "rotate(-90)")
+        .attr("x", -height1 / 2)
+        .attr("y", 20)
+        .attr("text-anchor", "middle")
+        .text("Total Opioid Deaths");
+
+//chart 2
+      const deathRateCols = [
+        "Crude Opioid Death Rate (2010-2013)",
+        "Crude Opioid Death Rate (2014-2017)",
+        "Crude Opioid Death Rate (2018-2021)"
+      ];
+
+      const hsCols = [
+        "Percent of Population Aged 25+ who Have at Least a High School Diploma (2009-2013)",
+        "Percent of Population Aged 25+ who Have at Least a High School Diploma (2013-2017)",
+        "Percent of Population Aged 25+ who Have at Least a High School Diploma (2017-2021)"
+      ];
+
+      const baCols = [
+        "Percent of Population Aged 25+ who Have a Bachelor's Degree or More (2009-2013)",
+        "Percent of Population Aged 25+ who Have a Bachelor's Degree or More (2013-2017)",
+        "Percent of Population Aged 25+ who Have a Bachelor's Degree or More (2017-2021)"
+      ];
+
+      const periods2 = ["2010-2013", "2014-2017", "2018-2021"];
+
+      const dataset = periods2.map((period, i) => {
+        const hs = d3.mean(data, d => cleanNumber(d[hsCols[i]]));
+        const ba = d3.mean(data, d => cleanNumber(d[baCols[i]]));
+
+        return {
+          period: period,
+          opioid: d3.mean(data, d => cleanNumber(d[deathRateCols[i]])),
+          hs: hs,
+          ba: ba
+        };
+      });
+
+      const svg2 = d3.select("#chart2");
+      const width2 = +svg2.attr("width");
+      const height2 = +svg2.attr("height");
+
+      const margin2 = { top: 60, right: 220, bottom: 70, left: 100 };
+      const innerWidth2 = width2 - margin2.left - margin2.right;
+      const innerHeight2 = height2 - margin2.top - margin2.bottom;
+
+      const g2 = svg2.append("g")
+        .attr("transform", `translate(${margin2.left},${margin2.top})`);
+
+      const x2 = d3.scalePoint()
+        .domain(periods2)
+        .range([0, innerWidth2])
+        .padding(0.5);
+
+      const y2 = d3.scaleLinear()
+        .domain([
+          0,
+          d3.max(dataset, d => Math.max(d.opioid, d.hs, d.ba))
+        ])
+        .nice()
+        .range([innerHeight2, 0]);
+
+      g2.append("g")
+        .attr("transform", `translate(0,${innerHeight2})`)
+        .call(d3.axisBottom(x2));
+
+      g2.append("g")
+        .call(d3.axisLeft(y2));
+
+      const line2 = d3.line()
+        .x(d => x2(d.period))
+        .y(d => y2(d.value));
+
+      const lines = [
+        {
+          name: "Opioid Death Rate (per 100k)",
+          color: "red",
+          values: dataset.map(d => ({ period: d.period, value: d.opioid }))
+        },
+        {
+          name: "High School or More %",
+          color: "steelblue",
+          values: dataset.map(d => ({ period: d.period, value: d.hs }))
+        },
+        {
+          name: "Bachelor's or More %",
+          color: "green",
+          values: dataset.map(d => ({ period: d.period, value: d.ba }))
+        }
+      ];
+
+      lines.forEach((series, seriesIndex) => {
+        g2.append("path")
+          .datum(series.values)
+          .attr("class", "line")
+          .attr("stroke", series.color)
+          .attr("d", line2);
+
+        g2.selectAll(".dot-" + seriesIndex)
+          .data(series.values)
+          .enter()
+          .append("circle")
+          .attr("cx", d => x2(d.period))
+          .attr("cy", d => y2(d.value))
+          .attr("r", 5)
+          .attr("fill", series.color);
+      });
+
+      const legend = svg2.append("g")
+        .attr("class", "legend")
+        .attr("transform", `translate(${width2 - 210}, 90)`);
+
+      lines.forEach((series, i) => {
+        legend.append("line")
+          .attr("x1", 0)
+          .attr("x2", 20)
+          .attr("y1", i * 25)
+          .attr("y2", i * 25)
+          .attr("stroke", series.color)
+          .attr("stroke-width", 3);
+
+        legend.append("text")
+          .attr("x", 30)
+          .attr("y", i * 25 + 4)
+          .text(series.name);
+      });
+
+      svg2.append("text")
+        .attr("class", "chart-title")
+        .attr("x", width2 / 2)
+        .attr("y", 30)
+        .text("Education Levels vs Opioid Death Rate");
+
+      svg2.append("text")
+        .attr("class", "axis-label")
+        .attr("x", width2 / 2)
+        .attr("y", height2 - 20)
+        .attr("text-anchor", "middle")
+        .text("Time Period");
+
+      svg2.append("text")
+        .attr("class", "axis-label")
+        .attr("transform", "rotate(-90)")
+        .attr("x", -height2 / 2)
+        .attr("y", 20)
+        .attr("text-anchor", "middle")
+        .text("Percent / Deaths per 100k");
+    }).catch(error => {
+      console.error("Error loading CSV:", error);
+    });
+  </script>
+</body>
+</html>
