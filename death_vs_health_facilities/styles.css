@@ -1,0 +1,89 @@
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 20px;
+  background-color: #f5f5f5;
+}
+
+h1 {
+  text-align: center;
+  color: #2c3e50;
+  margin-bottom: 20px;
+}
+
+#chart {
+  display: block;
+  margin: 0 auto;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  padding: 20px;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #bdc3c7;
+  shape-rendering: crispEdges;
+}
+
+.axis text {
+  font-family: sans-serif;
+  font-size: 12px;
+  fill: #34495e;
+}
+
+.dot {
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.dot:hover {
+  opacity: 1;
+  stroke-width: 2px;
+}
+
+.label {
+  font-weight: bold;
+  fill: #2c3e50;
+}
+
+.tooltip {
+  position: absolute;
+  text-align: left;
+  width: auto;
+  height: auto;
+  padding: 10px;
+  font: 14px sans-serif;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #bdc3c7;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  pointer-events: none;
+  opacity: 0;
+}
+  color: #331122;
+  padding: 1rem;
+}
+
+.controls {
+  /* OPTIONAL add further styling to the controls */
+  text-align: center;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+button {
+  /* TODO make the corners of the button rounded */
+  border-radius: 10px;
+  padding: 3px 13px;
+  margin: 5px;
+  cursor: pointer;
+  font-size: 1.1em;
+}
+
+/* TODO add css styling so that one (and only one!) of your poems is displayed differently to the others */
+#camera-obscura {
+  background-color: #222;
+  border-color: #ffcc00;
+  font-family: "Courier New", Courier, monospace;
+}
