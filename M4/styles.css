@@ -1,0 +1,123 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'EB Garamond', serif;
+  background: #faf8f4;
+  color: #1a1917;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100vh;
+  padding: 48px 24px 80px;
+}
+
+/* ── Page ── */
+.page {
+  width: 100%;
+  max-width: 1600px;
+}
+
+/* ── Header ── */
+.poem-header {
+  margin-bottom: 40px;
+  border-bottom: 1.5px solid #1a1917;
+  padding-bottom: 20px;
+}
+
+.kicker {
+  font-family: 'Georgia', monospace;
+  font-size: 10px;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: #888;
+  margin-bottom: 12px;
+}
+
+.poem-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: #1a1917;
+  margin-bottom: 8px;
+  letter-spacing: -0.3px;
+}
+
+.poem-byline {
+  font-family: 'EB Garamond', serif;
+  font-style: italic;
+  font-size: 15px;
+  color: #777;
+}
+
+/* ── SVG container ── */
+.poem-body {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 40px 44px 44px;
+}
+
+#poem-svg {
+  width: 100%;
+  display: block;
+  overflow: visible;
+}
+
+/* ── Chart styles ── */
+.county-label {
+  font-size: 7px;
+  text-anchor: middle;
+  fill: white;
+  pointer-events: none;
+}
+
+.chart-title {
+  font-size: 20px;
+  font-weight: bold;
+  text-anchor: middle;
+}
+
+.axis-label {
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.line {
+  fill: none;
+  stroke-width: 3;
+}
+
+.county {
+  stroke: gray;
+  stroke-width: 0.5px;
+}
+
+.county:hover {
+  stroke: #000;
+  stroke-width: 1.2px;
+}
+
+.legend-label {
+  font-size: 12px;
+}
+
+.map-title {
+  font-size: 16px;
+  font-weight: bold;
+  text-anchor: start;
+}
+
+.tooltip {
+  position: absolute;
+  background: white;
+  border: 1px solid #999;
+  padding: 8px;
+  font-size: 12px;
+  pointer-events: none;
+  opacity: 0;
+}
