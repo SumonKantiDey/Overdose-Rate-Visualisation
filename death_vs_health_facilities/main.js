@@ -129,7 +129,7 @@ d3.csv("../ga_state_clean.csv").then(data => {
 
   // Quadrant labels
   svg.append("text")
-    .attr("x", xScale(medianFac) + 10)
+    .attr("x", xScale(medianFac) + 100)
     .attr("y", 20)
     .style("font-size", "12px")
     .style("fill", "gray")
@@ -269,14 +269,14 @@ d3.csv("../ga_state_clean.csv").then(data => {
   legend.append("text")
     .attr("x", 0)
     .attr("y", -8)
-    .style("font-size", "12px")
+    .style("font-size", "10px")
     .style("font-weight", "bold")
     .text("Bubble size =");
 
   legend.append("text")
     .attr("x", 0)
     .attr("y", 5)
-    .style("font-size", "12px")
+    .style("font-size", "10px")
     .style("font-weight", "bold")
     .text("Opioid death count");
 
@@ -286,7 +286,7 @@ d3.csv("../ga_state_clean.csv").then(data => {
     .append("circle")
     .attr("class", "legend")
     .attr("cx", 20)
-    .attr("cy", (d, i) => 25 + i * 40)
+    .attr("cy", (d, i) => 25 + i * 30)
     .attr("r", d => d)
     .style("fill", "#4F9AD1")
     .style("stroke", "black")
@@ -299,7 +299,7 @@ d3.csv("../ga_state_clean.csv").then(data => {
     .append("text")
     .attr("class", "legend")
     .attr("x", 50)
-    .attr("y", (d, i) => 25 + i * 40)
+    .attr("y", (d, i) => 25 + i * 30)
     .style("font-size", "10px")
     .text(d => `${d} deaths`);
 
