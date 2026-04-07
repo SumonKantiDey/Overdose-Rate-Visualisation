@@ -271,6 +271,7 @@ function renderViz2() {
         .attr('text-anchor', 'middle')
         .style('font-family', "'EB Garamond', serif")
         .style('font-size', '12px').style('fill', gr.color).style('font-weight', '500')
+        .style('opacity', 0) // hide them till hover
         .text(`${sign}${diff.toFixed(1)} (${sign}${pct}%)`);
 
       segLbls.push({ lbl, a, b: v, dy });
@@ -324,6 +325,7 @@ function renderViz2() {
         .attr('text-anchor', 'middle')
         .style('font-family', "'EB Garamond', serif")
         .style('font-size', '13px').style('fill', gr.color).style('font-weight', '500')
+        .style('opacity', 0) // hide them till hover
         .text(v.rate.toFixed(1));
 
       dotLbls.push({ lbl, v, dy });
