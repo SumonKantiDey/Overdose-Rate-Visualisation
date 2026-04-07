@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>American Opioid Crisis</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet">
+
+<style>
+/* Reset & base */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --ers1: #2d6a2d;
+  --ers2: #c9a800;
+  --ers3: #e07800;
+  --ers4: #8b1a1a;
+  --bg:   #faf8f4;
+  --card: #ffffff;
+  --ink:  #1a1917;
+  --mute: #888;
+  --rule: #e0dbd2;
+}
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;         /* page-flip controls scrolling */
+  background: var(--bg);
+  font-family: 'EB Garamond', serif;
+  color: var(--ink);
+}
+
+/* Page container  */
+/* One .slide per stanza/viz pair. Only the active one is visible. */
+.slides-wrap {
+  width: 100%; height: 100vh;
+  position: relative;
+  z-index: 0;
+}
+
+.slide {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  bottom: 64px;            /* leave room for the 64px nav bar */
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.slide.active {
+  display: flex;
+}
+
+/* Title slide (slide 0) */
+.slide-title {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 16px;
+  padding: 60px 40px;
+}
+
+.title-kicker {
+  font-size: 11px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+
+.title-h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(32px, 5vw, 60px);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--ink);
+}
+
+.title-byline {
+  font-style: italic;
+  font-size: clamp(14px, 1.8vw, 18px);
+  color: var(--mute);
+  margin-top: 4px;
+}
+
+.title-prompt {
+  margin-top: 32px;
+  font-size: 13px;
+  color: #bbb;
+  letter-spacing: 1px;
+}
+
+/* content slides (1-4) */
+.slide-content {
+  flex-direction: row;
+  align-items: stretch;
+  overflow: hidden;
+}
+
+/* Left: poem stanza */
+.pane-poem {
+  width: 300px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 60px 48px 60px 52px;
+  border-right: 1px solid var(--rule);
+  gap: 18px;
+}
+
+.stanza-num {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 13px;
+  color: #ccc;
+  letter-spacing: 0.5px;
+}
+
+.stanza-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.stanza-lines p {
+  font-size: clamp(17px, 1.6vw, 21px);
+  line-height: 1.5;
+}
+
+.stanza-lines p.thesis {
+  font-style: italic;
+  color: #666;
+  margin-top: 4px;
+}
+
+/* Right: visualization */
+.pane-viz {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 40px 48px 28px;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* vis 2 */
+.viz2-title {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(18px, 2vw, 24px);
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 3px;
+}
+
+.viz2-sub {
+  font-style: italic;
+  font-size: 12.5px;
+  color: var(--mute);
+  margin-bottom: 10px;
+}
+
+.viz2-controls {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+#viz2-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+
+.leg-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  transition: opacity .18s, border-color .18s;
+  user-select: none;
+}
+.leg-item:hover        { border-color: #ddd; }
+.leg-item.faded        { opacity: 0.18; }
+.leg-item.isolated     { border-color: #bbb; background: #f3f1ec; }
+
+.leg-swatch {
+  width: 24px; height: 0;
+  border-top-width: 2.5px;
+  border-top-style: solid;
+  flex-shrink: 0;
+}
+.leg-swatch.dashed { border-top-style: dashed; }
+
+.leg-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  margin-left: -17px;
+  flex-shrink: 0;
+}
+
+.leg-label {
+  font-size: 13px;
+  font-weight: 500;
+}
+.leg-sub {
+  font-size: 11.5px;
+  color: #999;
+}
+
+.zoom-btns {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.zoom-btns button {
+  font-family: 'EB Garamond', serif;
+  font-size: 12px;
+  color: #555;
+  background: #f3f1ec;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  padding: 2px 10px;
+  cursor: pointer;
+}
+.zoom-btns button:hover { background: #e9e7e1; }
+
+#viz2-svg {
+  flex: 1;
+  width: 100%;
+  display: block;
+  min-height: 0;
+  cursor: grab;
+}
+#viz2-svg:active { cursor: grabbing; }
+
+.viz2-foot {
+  flex-shrink: 0;
+  margin-top: 8px;
+  font-size: 11px;
+  color: #bbb;
+  line-height: 1.6;
+}
+
+/* vis placeholder panes - delete after */
+.viz-placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border: 1.5px dashed #ccc;
+  border-radius: 4px;
+  background: #f7f5f0;
+}
+
+.viz-placeholder-label {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 32px;
+  color: #ccc;
+}
+.viz-placeholder-sub {
+  font-size: 14px;
+  color: #ccc;
+}
+
+.nav {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  background: var(--bg);
+  border-top: 1px solid var(--rule);
+  z-index: 1000;
+  pointer-events: all;
+}
+
+.nav-btn {
+  font-family: 'EB Garamond', serif;
+  font-size: 14px;
+  color: var(--ink);
+  background: none;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  padding: 5px 20px;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+  min-width: 90px;
+}
+.nav-btn:hover   { background: #eceae4; border-color: #aaa; }
+.nav-btn:disabled { opacity: 0.25; cursor: default; pointer-events: none; }
+
+/* Dot indicators */
+.nav-dots {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #ccc;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: background .2s, transform .2s;
+}
+.dot.active {
+  background: var(--ink);
+  transform: scale(1.25);
+}
+
+/* slides account for nav height via bottom: 64px */
+
+/* Tooltip */
+#viz2-tip {
+  position: fixed;
+  pointer-events: none;
+  background: #fff;
+  border: 1px solid #bbb;
+  border-radius: 3px;
+  padding: 9px 13px;
+  font-family: 'EB Garamond', serif;
+  font-size: 13.5px;
+  line-height: 1.65;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.09);
+  opacity: 0;
+  transition: opacity .1s;
+  max-width: 210px;
+  z-index: 200;
+}
+#viz2-tip.on { opacity: 1; }
+.tt-group  { font-size: 11px; font-style: italic; color: #999; margin-bottom: 2px; }
+.tt-period { font-size: 12px; color: #888; margin-bottom: 4px; }
+.tt-value  { font-size: 16px; font-weight: 500; }
+.tt-change { font-size: 12px; color: #555; margin-top: 2px; }
+</style>
+</head>
+<body>
+
+<div class="slides-wrap">
+
+  <!-- Title slide -->
+  <div class="slide slide-title active" data-slide="0">
+    <div class="title-kicker">M4 &nbsp;·&nbsp; Mettoon · Sun · Dey &nbsp;·&nbsp; 2/19/26</div>
+    <h1 class="title-h1">American Opioid Crisis</h1>
+    <p class="title-byline">By Sumon Kanti Dey, Dennis Sun, and Avery Mattoon</p>
+    <p class="title-prompt">press next to begin →</p>
+  </div>
+
+  <!-- Stanza + Visual 1 -->
+  <div class="slide slide-content" data-slide="1">
+    <div class="pane-poem">
+      <div class="stanza-num">I</div>
+      <div class="stanza-lines">
+        <p>The numbers rise, and rise again</p>
+        <p>Each spike means more souls lost</p>
+        <p>Lives gone at a heavy cost</p>
+        <p>The line goes up year by year</p>
+        <p>The loss never feels less severe.</p>
+      </div>
+    </div>
+    <div class="pane-viz">
+      <!--
+        VISUAL 1 PLACEHOLDER
+        Paired stanza: "The numbers rise, and rise again…"
+        Suggested: Overall Georgia OD trend — statewide time
+        series or choropleth showing total deaths over time.
+
+        To implement:
+          1. Replace this .viz-placeholder div with your chart
+             container (e.g. <div id="v1"><svg id="v1-svg"></svg></div>)
+          2. Add <script src="viz1.js"></script> before </body>
+      -->
+      <div class="viz-placeholder">
+        <span class="viz-placeholder-label">Visual 1</span>
+        <span class="viz-placeholder-sub">Overall Georgia OD trend</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stanza + Visual 2 -->
+  <div class="slide slide-content" data-slide="2">
+    <div class="pane-poem">
+      <div class="stanza-num">II</div>
+      <div class="stanza-lines">
+        <p>The smell of destitution pulls me in</p>
+        <p>What little you have, becomes mine</p>
+        <p>Should you eat this week?</p>
+        <p>The itch hurts more than hunger, every time.</p>
+      </div>
+    </div>
+    <div class="pane-viz">
+      <div class="viz2-title">Overdose Deaths by Economic Risk Score Group</div>
+      <div class="viz2-sub">Deaths per 100,000 residents</div>
+      <div class="viz2-controls">
+        <div id="viz2-legend"></div>
+        <div class="zoom-btns">
+          <button id="z-in">+ zoom</button>
+          <button id="z-out">− zoom</button>
+          <button id="z-reset">reset</button>
+        </div>
+      </div>
+      <svg id="viz2-svg"></svg>
+      <div class="viz2-foot">
+        † ERS 4: partial data (19–25 of 44 counties per period). ERS 5 omitted — fully suppressed.
+        Y-axis starts at 30; differences are visually amplified.
+      </div>
+    </div>
+  </div>
+
+  <!-- Stanza + Visual 3 -->
+  <div class="slide slide-content" data-slide="3">
+    <div class="pane-poem">
+      <div class="stanza-num">III</div>
+      <div class="stanza-lines">
+        <p>When help is few, the counts run high</p>
+        <p>Gaps in care let risk pass by</p>
+        <p>Access decides who lives, who dies.</p>
+        <p>Availability shapes the chance to survive.</p>
+        <p class="thesis">Timely care matters.</p>
+      </div>
+    </div>
+    <div class="pane-viz">
+      <!--
+        VISUAL 3 PLACEHOLDER
+        Paired stanza: "When help is few, the counts run high…"
+        Suggested: Healthcare access / facility gap map or
+        chart — substance use facilities, MDs per capita,
+        mental health facilities by county.
+
+        To implement:
+          1. Replace this .viz-placeholder div with your chart
+             container (e.g. <div id="v3"><svg id="v3-svg"></svg></div>)
+          2. Add <script src="viz3.js"></script> before </body>
+      -->
+      <div class="viz-placeholder">
+        <span class="viz-placeholder-label">Visual 3</span>
+        <span class="viz-placeholder-sub">Healthcare access &amp; facility gaps</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stanza + Visual 4 -->
+  <div class="slide slide-content" data-slide="4">
+    <div class="pane-poem">
+      <div class="stanza-num">IV</div>
+      <div class="stanza-lines">
+        <p>As the masses grow more educated</p>
+        <p>My influence fades, the itch is scratched</p>
+        <p>Some, trapped in a vicious cycle</p>
+        <p>Never learn better</p>
+      </div>
+    </div>
+    <div class="pane-viz">
+      <!--
+        VISUAL 4 PLACEHOLDER
+        Paired stanza: "As the masses grow more educated…"
+        Suggested: Education rate vs. overdose rate scatter
+        or choropleth — % HS diploma / bachelor's degree
+        vs. crude death rate by county.
+
+        To implement:
+          1. Replace this .viz-placeholder div with your chart
+             container (e.g. <div id="v4"><svg id="v4-svg"></svg></div>)
+          2. Add <script src="viz4.js"></script> before </body>
+      -->
+      <div class="viz-placeholder">
+        <span class="viz-placeholder-label">Visual 4</span>
+        <span class="viz-placeholder-sub">Education rate vs. overdose rate</span>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /slides-wrap -->
+
+<!-- navigation bar -->
+<nav class="nav">
+  <button class="nav-btn" id="btn-back" disabled>← back</button>
+  <div class="nav-dots" id="nav-dots"></div>
+  <button class="nav-btn" id="btn-next">next →</button>
+</nav>
+
+<!-- Tooltip -->
+<div id="viz2-tip"></div>
+
+<script>
+
+// PAGINATION
+const TOTAL_SLIDES = 5;   // 0 = title, 1–4 = stanza+viz pairs
+let currentSlide = 0;
+
+const slides   = document.querySelectorAll('.slide');
+const btnBack  = document.getElementById('btn-back');
+const btnNext  = document.getElementById('btn-next');
+const dotsWrap = document.getElementById('nav-dots');
+
+// Build dot indicators
+for (let i = 0; i < TOTAL_SLIDES; i++) {
+  const dot = document.createElement('button');
+  dot.className = 'dot' + (i === 0 ? ' active' : '');
+  dot.setAttribute('aria-label', `Go to slide ${i}`);
+  dot.addEventListener('click', () => goTo(i));
+  dotsWrap.appendChild(dot);
+}
+
+function goTo(n) {
+  slides[currentSlide].classList.remove('active');
+  dotsWrap.children[currentSlide].classList.remove('active');
+  currentSlide = Math.max(0, Math.min(TOTAL_SLIDES - 1, n));
+  slides[currentSlide].classList.add('active');
+  dotsWrap.children[currentSlide].classList.add('active');
+  btnBack.disabled = currentSlide === 0;
+  btnNext.disabled = currentSlide === TOTAL_SLIDES - 1;
+
+  // Render viz2 once it first becomes visible.
+  // requestAnimationFrame waits one paint cycle so getBoundingClientRect()
+  // returns real pixel dimensions instead of 0.
+  if (currentSlide === 2 && !viz2Rendered) {
+    requestAnimationFrame(() => renderViz2());
+  }
+}
+
+btnBack.addEventListener('click', () => goTo(currentSlide - 1));
+btnNext.addEventListener('click', () => goTo(currentSlide + 1));
+
+// Keyboard arrow navigation
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown')  goTo(currentSlide + 1);
+  if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')    goTo(currentSlide - 1);
+});
+
+// VISUALIZATION 2
+// Overdose Deaths per 100,000 by ERS Group
+// Colors matched to existing static chart:
+//   ERS 1 → dark green  #2d6a2d
+//   ERS 2 → gold/yellow #c9a800
+//   ERS 3 → orange      #e07800
+//   ERS 4 → dark red    #8b1a1a  (dashed — partial data)
+
+// ── Data ──────────────────────────────────────────────────────────────────
+// Deaths per 100,000 residents, summed over non-suppressed counties per ERS group.
+// Period midpoints as x-positions so axis labels can show full period ranges.
+//
+// Vertical order by period (high → low):
+//   2010–2013: ERS3=53.74 > ERS1=46.24 > ERS4=39.68 > ERS2=38.23
+//   2014–2017: ERS1=61.17 > ERS3=53.00 > ERS2=48.93 > ERS4=43.87
+//   2018–2021: ERS3=74.38 > ERS2=63.50 > ERS1=63.01 > ERS4=59.87
+
+const VIZ2_GROUPS = [
+  {
+    id: 'ers1', label: 'ERS 1', sub: 'Lowest risk (26 counties)',
+    color: '#2d6a2d', dashed: false,
+    values: [
+      { period: '2010–2013', year: 2011.5, rate: 46.24 },
+      { period: '2014–2017', year: 2015.5, rate: 61.17 },
+      { period: '2018–2021', year: 2019.5, rate: 63.01 },
+    ]
+  },
+  {
+    id: 'ers2', label: 'ERS 2', sub: 'Moderate risk (32 counties)',
+    color: '#c9a800', dashed: false,
+    values: [
+      { period: '2010–2013', year: 2011.5, rate: 38.23 },
+      { period: '2014–2017', year: 2015.5, rate: 48.93 },
+      { period: '2018–2021', year: 2019.5, rate: 63.50 },
+    ]
+  },
+  {
+    id: 'ers3', label: 'ERS 3', sub: 'Elevated risk (39 counties)',
+    color: '#e07800', dashed: false,
+    values: [
+      { period: '2010–2013', year: 2011.5, rate: 53.74 },
+      { period: '2014–2017', year: 2015.5, rate: 53.00 },
+      { period: '2018–2021', year: 2019.5, rate: 74.38 },
+    ]
+  },
+  {
+    id: 'ers4', label: 'ERS 4', sub: 'Highest risk (44 counties) †',
+    color: '#8b1a1a', dashed: true,
+    values: [
+      { period: '2010–2013', year: 2011.5, rate: 39.68 },
+      { period: '2014–2017', year: 2015.5, rate: 43.87 },
+      { period: '2018–2021', year: 2019.5, rate: 59.87 },
+    ]
+  },
+];
+
+// Dot label placement (above/below) per period index, per group
+// Vertical rank per period:
+//   [0] 2010–13: ERS3 > ERS1 > ERS4 > ERS2
+//   [1] 2014–17: ERS1 > ERS3 > ERS2 > ERS4
+//   [2] 2018–21: ERS3 > ERS2 > ERS1 > ERS4
+const DOT_SIDE = {
+  ers1: ['below', 'above', 'below'],
+  ers2: ['below', 'below', 'above'],
+  ers3: ['above', 'above', 'above'],
+  ers4: ['below', 'below', 'below'],
+};
+
+// Segment midpoint label placement
+const SEG_SIDE = {
+  ers1: ['above', 'below'],
+  ers2: ['above', 'above'],
+  ers3: ['below', 'above'],
+  ers4: ['below', 'above'],
+};
+
+// End-label y-offsets (ERS1 & ERS2 nearly converge at 2018–2021)
+const END_DY = { ers1: -7, ers2: +12, ers3: -5, ers4: +5 };
+
+let viz2Rendered = false;
+
+// Refs for zoom updates
+const v2refs = { lines: {}, circs: {}, endLbls: {}, segHits: {}, dotLbls: {}, segLbls: {} };
+let v2isolated = null;
+let v2plotG, v2xScale, v2yScale, v2gridG, v2xAxisG, v2yAxisG, v2svg, v2zoom;
+
+function renderViz2() {
+  viz2Rendered = true;
+
+  const svgEl = document.getElementById('viz2-svg');
+  const rect  = svgEl.getBoundingClientRect();
+  // Use measured dimensions; fall back to sensible defaults if still 0
+  const W_px  = rect.width  > 0 ? rect.width  : 800;
+  const H_px  = rect.height > 0 ? rect.height : 480;
+
+  // Use actual pixel dimensions for viewBox so everything fills the pane
+  const totalW = W_px;
+  const totalH = H_px;
+  const margin = { top: 32, right: 96, bottom: 60, left: 70 };
+  const W = totalW - margin.left - margin.right;
+  const H = totalH - margin.top  - margin.bottom;
+
+  v2svg = d3.select('#viz2-svg')
+    .attr('viewBox', `0 0 ${totalW} ${totalH}`)
+    .attr('preserveAspectRatio', 'xMidYMid meet');
+
+  // Clip path
+  v2svg.append('defs')
+    .append('clipPath').attr('id', 'v2clip')
+    .append('rect')
+      .attr('x', 0).attr('y', -margin.top)
+      .attr('width', W)
+      .attr('height', H + margin.top + margin.bottom);
+
+  const g = v2svg.append('g')
+    .attr('transform', `translate(${margin.left},${margin.top})`);
+
+  // Base scales
+  v2xScale = d3.scaleLinear().domain([2010, 2021]).range([0, W]);
+  v2yScale = d3.scaleLinear().domain([30, 80]).range([H, 0]).nice();
+
+  // Gridlines
+  v2gridG = g.append('g');
+  function drawGrid(yS) {
+    v2gridG.selectAll('line').remove();
+    yS.ticks(6).forEach(t => {
+      v2gridG.append('line')
+        .attr('x1', 0).attr('x2', W)
+        .attr('y1', yS(t)).attr('y2', yS(t))
+        .attr('stroke', '#c8c8c8').attr('stroke-width', 0.8)
+        .attr('stroke-dasharray', '4,4');
+    });
+  }
+  drawGrid(v2yScale);
+
+  // Axes
+  const xTickVals   = [2011.5, 2015.5, 2019.5];
+  const xTickLabels = { 2011.5: '2010–2013', 2015.5: '2014–2017', 2019.5: '2018–2021' };
+
+  v2xAxisG = g.append('g').attr('transform', `translate(0,${H})`);
+  v2yAxisG = g.append('g');
+
+  function drawX(xS) {
+    v2xAxisG.call(
+      d3.axisBottom(xS)
+        .tickValues(xTickVals)
+        .tickFormat(d => xTickLabels[d] || '')
+        .tickSize(6)
+    );
+    v2xAxisG.select('.domain').attr('stroke', '#aaa');
+    v2xAxisG.selectAll('.tick line').attr('stroke', '#aaa');
+    v2xAxisG.selectAll('text')
+      .style('font-family', "'EB Garamond', serif")
+      .style('font-size', '14px').style('fill', '#555');
+  }
+
+  function drawY(yS) {
+    v2yAxisG.call(d3.axisLeft(yS).ticks(6).tickFormat(d => d).tickSize(5));
+    v2yAxisG.select('.domain').attr('stroke', '#aaa');
+    v2yAxisG.selectAll('.tick line').attr('stroke', '#aaa');
+    v2yAxisG.selectAll('text')
+      .style('font-family', "'EB Garamond', serif")
+      .style('font-size', '14px').style('fill', '#555');
+  }
+
+  drawX(v2xScale);
+  drawY(v2yScale);
+
+  // Axis labels
+  g.append('text')
+    .attr('x', W / 2).attr('y', H + 52)
+    .attr('text-anchor', 'middle')
+    .style('font-family', "'EB Garamond', serif")
+    .style('font-size', '15px').style('font-weight', 'bold').style('fill', '#555')
+    .text('Reporting Period');
+
+  g.append('text')
+    .attr('transform', 'rotate(-90)')
+    .attr('x', -(H / 2)).attr('y', -54)
+    .attr('text-anchor', 'middle')
+    .style('font-family', "'EB Garamond', serif")
+    .style('font-size', '14px').style('font-weight', 'bold').style('fill', '#555')
+    .text('Overdose Deaths per 100,000 Residents');
+
+  g.append('text')
+    .attr('x', 3).attr('y', v2yScale(30) - 5)
+    .style('font-family', "'EB Garamond', serif")
+    .style('font-size', '9px').style('fill', '#bbb')
+    .text('axis starts at 30');
+
+  // Line generator factory
+  function makeLine(xS, yS) {
+    return d3.line().x(d => xS(d.year)).y(d => yS(d.rate)).curve(d3.curveLinear);
+  }
+
+  // Plot group (clipped)
+  v2plotG = g.append('g').attr('clip-path', 'url(#v2clip)');
+
+  VIZ2_GROUPS.forEach(gr => {
+    const lg = v2plotG.append('g').attr('class', `v2g-${gr.id}`);
+
+    // Line
+    v2refs.lines[gr.id] = lg.append('path')
+      .datum(gr.values)
+      .attr('fill', 'none')
+      .attr('stroke', gr.color)
+      .attr('stroke-width', 3)
+      .attr('stroke-linecap', 'round')
+      .attr('stroke-linejoin', 'round')
+      .attr('stroke-dasharray', gr.dashed ? '8,5' : 'none')
+      .attr('d', makeLine(v2xScale, v2yScale));
+
+    // Segment labels
+    const segLbls = [];
+    gr.values.forEach((v, i) => {
+      if (i === 0) return;
+      const a    = gr.values[i - 1];
+      const diff = v.rate - a.rate;
+      const pct  = ((diff / a.rate) * 100).toFixed(0);
+      const sign = diff >= 0 ? '+' : '';
+      const mx   = v2xScale((a.year + v.year) / 2);
+      const my   = v2yScale((a.rate  + v.rate) / 2);
+      const dy   = SEG_SIDE[gr.id][i - 1] === 'above' ? -15 : 20;
+
+      const lbl = lg.append('text')
+        .attr('x', mx).attr('y', my + dy)
+        .attr('text-anchor', 'middle')
+        .style('font-family', "'EB Garamond', serif")
+        .style('font-size', '12px').style('fill', gr.color).style('font-weight', '500')
+        .text(`${sign}${diff.toFixed(1)} (${sign}${pct}%)`);
+
+      segLbls.push({ lbl, a, b: v, dy });
+    });
+    v2refs.segLbls[gr.id] = segLbls;
+
+    // Invisible segment hit lines (tooltip triggers)
+    const segHits = [];
+    gr.values.forEach((v, i) => {
+      if (i === 0) return;
+      const a    = gr.values[i - 1];
+      const diff = v.rate - a.rate;
+      const pct  = ((diff / a.rate) * 100).toFixed(1);
+      const sign = diff >= 0 ? '+' : '';
+
+      const hit = lg.append('line')
+        .attr('x1', v2xScale(a.year)).attr('y1', v2yScale(a.rate))
+        .attr('x2', v2xScale(v.year)).attr('y2', v2yScale(v.rate))
+        .attr('stroke', 'transparent').attr('stroke-width', 20)
+        .style('cursor', 'crosshair')
+        .on('mouseenter', evt => tipShow(evt, gr.color, gr.label,
+          `${a.period} → ${v.period}`, null,
+          `${sign}${diff.toFixed(2)} per 100k  (${sign}${pct}%)`))
+        .on('mousemove', tipMove)
+        .on('mouseleave', tipHide);
+
+      segHits.push({ hit, a, b: v });
+    });
+    v2refs.segHits[gr.id] = segHits;
+
+    // Dots + dot labels
+    const circs = [], dotLbls = [];
+    gr.values.forEach((v, i) => {
+      const circ = lg.append('circle')
+        .attr('cx', v2xScale(v.year)).attr('cy', v2yScale(v.rate))
+        .attr('r', 6).attr('fill', gr.color)
+        .attr('stroke', '#fff').attr('stroke-width', 2.5)
+        .style('cursor', 'pointer')
+        .on('mouseenter', function(evt) {
+          d3.select(this).attr('r', 9);
+          tipShow(evt, gr.color, gr.label, v.period, `${v.rate.toFixed(1)} per 100k`, null);
+        })
+        .on('mousemove', tipMove)
+        .on('mouseleave', function() { d3.select(this).attr('r', 6); tipHide(); });
+
+      circs.push({ circ, v });
+
+      const dy  = DOT_SIDE[gr.id][i] === 'above' ? -15 : 20;
+      const lbl = lg.append('text')
+        .attr('x', v2xScale(v.year)).attr('y', v2yScale(v.rate) + dy)
+        .attr('text-anchor', 'middle')
+        .style('font-family', "'EB Garamond', serif")
+        .style('font-size', '13px').style('fill', gr.color).style('font-weight', '500')
+        .text(v.rate.toFixed(1));
+
+      dotLbls.push({ lbl, v, dy });
+    });
+    v2refs.circs[gr.id]   = circs;
+    v2refs.dotLbls[gr.id] = dotLbls;
+
+    // End-of-line label
+    const last = gr.values.at(-1);
+    v2refs.endLbls[gr.id] = lg.append('text')
+      .attr('x', v2xScale(last.year) + 10)
+      .attr('y', v2yScale(last.rate) + END_DY[gr.id] + 4)
+      .style('font-family', "'EB Garamond', serif")
+      .style('font-size', '14px').style('fill', gr.color).style('font-weight', '500')
+      .text(gr.label);
+  });
+
+  // Legend
+  const legEl = document.getElementById('viz2-legend');
+  VIZ2_GROUPS.forEach(gr => {
+    const item = document.createElement('div');
+    item.className = 'leg-item';
+    item.dataset.id = gr.id;
+    item.innerHTML = `
+      <div class="leg-swatch ${gr.dashed ? 'dashed' : ''}" style="border-color:${gr.color}"></div>
+      <div class="leg-dot" style="background:${gr.color}"></div>
+      <span class="leg-label" style="color:${gr.color}">${gr.label}</span>
+      <span class="leg-sub">${gr.sub}</span>
+    `;
+    item.addEventListener('click', () => {
+      v2isolated = (v2isolated === gr.id) ? null : gr.id;
+      VIZ2_GROUPS.forEach(g2 => {
+        const on = v2isolated === null || v2isolated === g2.id;
+        v2plotG.select(`.v2g-${g2.id}`).transition().duration(180).style('opacity', on ? 1 : 0.1);
+        const el = legEl.querySelector(`[data-id="${g2.id}"]`);
+        el.classList.toggle('faded',    !on);
+        el.classList.toggle('isolated', v2isolated === g2.id);
+      });
+    });
+    legEl.appendChild(item);
+  });
+
+  // Zoom
+  v2zoom = d3.zoom().scaleExtent([0.8, 14]).on('zoom', function(event) {
+    const t  = event.transform;
+    const xS = t.rescaleX(v2xScale);
+    const yS = t.rescaleY(v2yScale);
+
+    drawX(xS); drawY(yS); drawGrid(yS);
+    const lf = makeLine(xS, yS);
+
+    VIZ2_GROUPS.forEach(gr => {
+      v2refs.lines[gr.id].attr('d', lf(gr.values));
+
+      v2refs.segHits[gr.id].forEach(({ hit, a, b }) => {
+        hit.attr('x1', xS(a.year)).attr('y1', yS(a.rate))
+           .attr('x2', xS(b.year)).attr('y2', yS(b.rate));
+      });
+      v2refs.segLbls[gr.id].forEach(({ lbl, a, b, dy }) => {
+        lbl.attr('x', xS((a.year + b.year) / 2))
+           .attr('y', yS((a.rate  + b.rate) / 2) + dy);
+      });
+      v2refs.circs[gr.id].forEach(({ circ, v }) => {
+        circ.attr('cx', xS(v.year)).attr('cy', yS(v.rate));
+      });
+      v2refs.dotLbls[gr.id].forEach(({ lbl, v, dy }) => {
+        lbl.attr('x', xS(v.year)).attr('y', yS(v.rate) + dy);
+      });
+      const last = gr.values.at(-1);
+      v2refs.endLbls[gr.id]
+        .attr('x', xS(last.year) + 10)
+        .attr('y', yS(last.rate) + END_DY[gr.id] + 4);
+    });
+  });
+
+  v2svg.call(v2zoom);
+
+  document.getElementById('z-in').onclick    = () => v2svg.transition().duration(280).call(v2zoom.scaleBy, 1.5);
+  document.getElementById('z-out').onclick   = () => v2svg.transition().duration(280).call(v2zoom.scaleBy, 1/1.5);
+  document.getElementById('z-reset').onclick = () => v2svg.transition().duration(360).call(v2zoom.transform, d3.zoomIdentity);
+}
+
+// Tooltip
+const tip = document.getElementById('viz2-tip');
+
+function tipShow(evt, color, group, period, value, change) {
+  let h = `<div class="tt-group" style="color:${color}">${group}</div>`;
+  h    += `<div class="tt-period">${period}</div>`;
+  if (value)  h += `<div class="tt-value"  style="color:${color}">${value}</div>`;
+  if (change) h += `<div class="tt-change">${change}</div>`;
+  tip.innerHTML = h;
+  tip.classList.add('on');
+  tipMove(evt);
+}
+
+function tipMove(evt) {
+  const pad = 14;
+  let x = evt.clientX + pad, y = evt.clientY - 10;
+  if (x + 220 > window.innerWidth) x = evt.clientX - 220 - pad;
+  tip.style.left = x + 'px';
+  tip.style.top  = y + 'px';
+}
+
+function tipHide() { tip.classList.remove('on'); }
+</script>
+
+<!--
+  Add additional visualization scripts here as implemented:
+  <script src="viz1.js"></script>
+  <script src="viz3.js"></script>
+  <script src="viz4.js"></script>
+-->
+</body>
+</html>
