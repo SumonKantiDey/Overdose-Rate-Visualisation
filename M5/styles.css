@@ -1,0 +1,336 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --ers1: #2d6a2d;
+  --ers2: #c9a800;
+  --ers3: #e07800;
+  --ers4: #8b1a1a;
+  --bg:   #faf8f4;
+  --card: #ffffff;
+  --ink:  #1a1917;
+  --mute: #888;
+  --rule: #e0dbd2;
+}
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;         /* page-flip controls scrolling */
+  background: var(--bg);
+  font-family: 'EB Garamond', serif;
+  color: var(--ink);
+}
+
+/* Page container  */
+/* One .slide per stanza/viz pair. Only the active one is visible. */
+.slides-wrap {
+  width: 100%; height: 100vh;
+  position: relative;
+  z-index: 0;
+}
+
+.slide {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  bottom: 64px;            /* leave room for the 64px nav bar */
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.slide.active {
+  display: flex;
+}
+
+/* Title slide (slide 0) */
+.slide-title {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 16px;
+  padding: 60px 40px;
+}
+
+.title-kicker {
+  font-size: 11px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+
+.title-h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(32px, 5vw, 60px);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--ink);
+}
+
+.title-byline {
+  font-style: italic;
+  font-size: clamp(14px, 1.8vw, 18px);
+  color: var(--mute);
+  margin-top: 4px;
+}
+
+.title-prompt {
+  margin-top: 32px;
+  font-size: 13px;
+  color: #bbb;
+  letter-spacing: 1px;
+}
+
+/* content slides (1-4) */
+.slide-content {
+  flex-direction: row;
+  align-items: stretch;
+  overflow: hidden;
+}
+
+/* Left: poem stanza */
+.pane-poem {
+  width: 300px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 60px 48px 60px 52px;
+  border-right: 1px solid var(--rule);
+  gap: 18px;
+}
+
+.stanza-num {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 13px;
+  color: #ccc;
+  letter-spacing: 0.5px;
+}
+
+.stanza-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.stanza-lines p {
+  font-size: clamp(17px, 1.6vw, 21px);
+  line-height: 1.5;
+}
+
+.stanza-lines p.thesis {
+  font-style: italic;
+  color: #666;
+  margin-top: 4px;
+}
+
+/* Right: visualization */
+.pane-viz {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 40px 48px 28px;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* vis 2 */
+.viz2-title {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(18px, 2vw, 24px);
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 3px;
+}
+
+.viz2-sub {
+  font-style: italic;
+  font-size: 12.5px;
+  color: var(--mute);
+  margin-bottom: 10px;
+}
+
+.viz2-controls {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+#viz2-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+
+.leg-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  transition: opacity .18s, border-color .18s;
+  user-select: none;
+}
+.leg-item:hover        { border-color: #ddd; }
+.leg-item.faded        { opacity: 0.18; }
+.leg-item.isolated     { border-color: #bbb; background: #f3f1ec; }
+
+.leg-swatch {
+  width: 24px; height: 0;
+  border-top-width: 2.5px;
+  border-top-style: solid;
+  flex-shrink: 0;
+}
+.leg-swatch.dashed { border-top-style: dashed; }
+
+.leg-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  margin-left: -17px;
+  flex-shrink: 0;
+}
+
+.leg-label {
+  font-size: 13px;
+  font-weight: 500;
+}
+.leg-sub {
+  font-size: 11.5px;
+  color: #999;
+}
+
+.zoom-btns {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.zoom-btns button {
+  font-family: 'EB Garamond', serif;
+  font-size: 12px;
+  color: #555;
+  background: #f3f1ec;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  padding: 2px 10px;
+  cursor: pointer;
+}
+.zoom-btns button:hover { background: #e9e7e1; }
+
+#viz2-svg {
+  flex: 1;
+  width: 100%;
+  display: block;
+  min-height: 0;
+  cursor: grab;
+}
+#viz2-svg:active { cursor: grabbing; }
+
+.viz2-foot {
+  flex-shrink: 0;
+  margin-top: 8px;
+  font-size: 11px;
+  color: #bbb;
+  line-height: 1.6;
+}
+
+/* vis placeholder panes - delete after */
+.viz-placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border: 1.5px dashed #ccc;
+  border-radius: 4px;
+  background: #f7f5f0;
+}
+
+.viz-placeholder-label {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 32px;
+  color: #ccc;
+}
+.viz-placeholder-sub {
+  font-size: 14px;
+  color: #ccc;
+}
+
+.nav {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  background: var(--bg);
+  border-top: 1px solid var(--rule);
+  z-index: 1000;
+  pointer-events: all;
+}
+
+.nav-btn {
+  font-family: 'EB Garamond', serif;
+  font-size: 14px;
+  color: var(--ink);
+  background: none;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  padding: 5px 20px;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+  min-width: 90px;
+}
+.nav-btn:hover   { background: #eceae4; border-color: #aaa; }
+.nav-btn:disabled { opacity: 0.25; cursor: default; pointer-events: none; }
+
+/* Dot indicators */
+.nav-dots {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #ccc;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: background .2s, transform .2s;
+}
+.dot.active {
+  background: var(--ink);
+  transform: scale(1.25);
+}
+
+/* slides account for nav height via bottom: 64px */
+
+/* Tooltip */
+#viz2-tip {
+  position: fixed;
+  pointer-events: none;
+  background: #fff;
+  border: 1px solid #bbb;
+  border-radius: 3px;
+  padding: 9px 13px;
+  font-family: 'EB Garamond', serif;
+  font-size: 13.5px;
+  line-height: 1.65;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.09);
+  opacity: 0;
+  transition: opacity .1s;
+  max-width: 210px;
+  z-index: 200;
+}
+#viz2-tip.on { opacity: 1; }
+.tt-group  { font-size: 11px; font-style: italic; color: #999; margin-bottom: 2px; }
+.tt-period { font-size: 12px; color: #888; margin-bottom: 4px; }
+.tt-value  { font-size: 16px; font-weight: 500; }
+.tt-change { font-size: 12px; color: #555; margin-top: 2px; }

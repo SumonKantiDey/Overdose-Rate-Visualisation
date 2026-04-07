@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>American Opioid Crisis</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="slides-wrap">
+
+  <!-- Title slide -->
+  <div class="slide slide-title active" data-slide="0">
+    <div class="title-kicker">M4 &nbsp;·&nbsp; Mattoon · Sun · Kanti Dey &nbsp;·&nbsp; 2/19/26</div>
+    <h1 class="title-h1">American Opioid Crisis</h1>
+    <p class="title-byline">By Sumon Kanti Dey, Dennis Sun, and Avery Mattoon</p>
+    <p class="title-prompt">press next to begin →</p>
+  </div>
+
+  <!-- Stanza + Visual 1 -->
+  <div class="slide slide-content" data-slide="1">
+    <div class="pane-poem">
+      <div class="stanza-num">I</div>
+      <div class="stanza-lines">
+        <p>The numbers rise, and rise again</p>
+        <p>Each spike means more souls lost</p>
+        <p>Lives gone at a heavy cost</p>
+        <p>The line goes up year by year</p>
+        <p>The loss never feels less severe.</p>
+      </div>
+    </div>
+    <div class="pane-viz">
+      <!--
+        VISUAL 1 PLACEHOLDER
+      -->
+      <div class="viz-placeholder">
+        <span class="viz-placeholder-label">Visual 1</span>
+        <span class="viz-placeholder-sub">Overall Georgia OD trend</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stanza + Visual 2 -->
+  <div class="slide slide-content" data-slide="2">
+    <div class="pane-poem">
+      <div class="stanza-num">II</div>
+      <div class="stanza-lines">
+        <p>The smell of destitution pulls me in</p>
+        <p>What little you have, becomes mine</p>
+        <p>Should you eat this week?</p>
+        <p>The itch hurts more than hunger, every time.</p>
+      </div>
+    </div>
+    <div class="pane-viz">
+      <div class="viz2-title">Overdose Deaths by Economic Risk Score Group</div>
+      <div class="viz2-sub">Deaths per 100,000 residents</div>
+      <div class="viz2-controls">
+        <div id="viz2-legend"></div>
+        <div class="zoom-btns">
+          <button id="z-in">+ zoom</button>
+          <button id="z-out">− zoom</button>
+          <button id="z-reset">reset</button>
+        </div>
+      </div>
+      <svg id="viz2-svg"></svg>
+      <div class="viz2-foot">
+        † ERS 4: partial data (19–25 of 44 counties per period). ERS 5 omitted — fully suppressed.
+        Y-axis starts at 30; differences are visually amplified.
+      </div>
+    </div>
+  </div>
+
+  <!-- Stanza + Visual 3 -->
+  <div class="slide slide-content" data-slide="3">
+    <div class="pane-poem">
+      <div class="stanza-num">III</div>
+      <div class="stanza-lines">
+        <p>When help is few, the counts run high</p>
+        <p>Gaps in care let risk pass by</p>
+        <p>Access decides who lives, who dies.</p>
+        <p>Availability shapes the chance to survive.</p>
+        <p class="thesis">Timely care matters.</p>
+      </div>
+    </div>
+    <div class="pane-viz">
+      <!--
+        VISUAL 3 PLACEHOLDER
+      -->
+      <div class="viz-placeholder">
+        <span class="viz-placeholder-label">Visual 3</span>
+        <span class="viz-placeholder-sub">Healthcare access &amp; facility gaps</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stanza + Visual 4 -->
+  <div class="slide slide-content" data-slide="4">
+    <div class="pane-poem">
+      <div class="stanza-num">IV</div>
+      <div class="stanza-lines">
+        <p>As the masses grow more educated</p>
+        <p>My influence fades, the itch is scratched</p>
+        <p>Some, trapped in a vicious cycle</p>
+        <p>Never learn better</p>
+      </div>
+    </div>
+    <div class="pane-viz">
+      <!--
+        VISUAL 4 PLACEHOLDER
+      -->
+      <div class="viz-placeholder">
+        <span class="viz-placeholder-label">Visual 4</span>
+        <span class="viz-placeholder-sub">Education rate vs. overdose rate</span>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /slides-wrap -->
+
+<!-- navigation bar -->
+<nav class="nav">
+  <button class="nav-btn" id="btn-back" disabled>← back</button>
+  <div class="nav-dots" id="nav-dots"></div>
+  <button class="nav-btn" id="btn-next">next →</button>
+</nav>
+
+<!-- Tooltip -->
+<div id="viz2-tip"></div>
+
+<script src="main.js"></script>
+
+</body>
+</html>
