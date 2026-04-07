@@ -237,7 +237,7 @@ function renderViz2() {
   g.append('text')
     .attr('x', 3).attr('y', v2yScale(30) - 5)
     .style('font-family', "'EB Garamond', serif")
-    .style('font-size', '9px').style('fill', '#bbb')
+    .style('font-size', '12px').style('fill', '#bbb')
     .text('axis starts at 30');
 
   // Line generator factory
@@ -443,7 +443,6 @@ function tipHide() { tip.classList.remove('on'); }
 // Mental Health Facilities vs Opioid Mortality
 
 const v3refs = { circles: {}, labels: {}, connectors: {} };
-let v3zoom;
 
 function renderViz3() {
   viz3Rendered = true;
@@ -494,12 +493,15 @@ function renderViz3() {
     .domain([0, d3.max(viz3Data, d => d[rateCol])])
     .range([height, 0]);
 
+  // Store references for zoom callback
+
   const sizeScale = d3.scaleSqrt()
     .domain([0, d3.max(viz3Data, d => d[countCol])])
     .range([4, 24]);
 
   // X Axis
   chartG.append("g")
+    .attr("class", "x-axis")
     .attr("transform", `translate(0,${height})`)
     .call(d3.axisBottom(xScale)
       .tickValues([0, 2.5, 5, 7.5, 10.0, 12.5, 15.0, 17.5, 20.0])
@@ -513,6 +515,7 @@ function renderViz3() {
 
   // Y Axis
   chartG.append("g")
+    .attr("class", "y-axis")
     .call(d3.axisLeft(yScale)
       .ticks(10)
       .tickSizeOuter(0)
@@ -555,6 +558,7 @@ function renderViz3() {
   const medianRate = d3.median(viz3Data, d => d[rateCol]);
 
   chartG.append("line")
+    .attr("class", "medianLine")
     .attr("x1", xScale(medianFac))
     .attr("x2", xScale(medianFac))
     .attr("y1", 0)
@@ -564,6 +568,7 @@ function renderViz3() {
     .style("opacity", 0.5);
 
   chartG.append("line")
+    .attr("class", "medianLine")
     .attr("x1", 0)
     .attr("x2", width)
     .attr("y1", yScale(medianRate))
@@ -572,7 +577,8 @@ function renderViz3() {
     .style("stroke-dasharray", "5,5")
     .style("opacity", 0.5);
 
-  chartG.append("text")
+  const moreFacLabel = chartG.append("text")
+    .attr("class", "medianLabel")
     .attr("x", xScale(medianFac) + 50)
     .attr("y", 20)
     .style("font-size", "11px")
@@ -580,9 +586,10 @@ function renderViz3() {
     .style("opacity", 0.7)
     .text("More facilities");
 
-  chartG.append("text")
+  const higherSevLabel = chartG.append("text")
+    .attr("class", "medianLabel")
     .attr("x", 10)
-    .attr("y", yScale(medianRate) - 10)
+    .attr("y", yScale(medianRate) - 50)
     .style("font-size", "11px")
     .style("fill", "gray")
     .style("opacity", 0.7)
@@ -651,7 +658,7 @@ function renderViz3() {
   for (let i = 0; i < 300; ++i) simulation.tick();
 
   // Connectors for labels
-  chartG.selectAll("line.v3-connector")
+  const connectors = chartG.selectAll("line.v3-connector")
     .data(toLabel)
     .enter()
     .append("line")
@@ -669,7 +676,7 @@ function renderViz3() {
     .style("stroke-dasharray", "3,3");
 
   // Label backgrounds
-  chartG.selectAll("rect.v3-label-bg")
+  const labelBgs = chartG.selectAll("rect.v3-label-bg")
     .data(toLabel)
     .enter()
     .append("rect")
@@ -687,18 +694,19 @@ function renderViz3() {
     .style("opacity", 0.9);
 
   // Labels
-  chartG.selectAll("text.v3-label")
+  const labels = chartG.selectAll("text.v3-label")
     .data(toLabel)
     .enter()
     .append("text")
     .attr("class", "v3-label")
     .attr("x", (d, i) => {
       const offset = i > 0 ? i * 30 : 10;
-      return xScale(d[facilityCol]) + offset;
+      return xScale(d[facilityCol]) + offset + 19.5;
     })
-    .attr("y", (d, i) => yScale(d[rateCol]) - 8 - i * 12)
-    .attr("text-anchor", "start")
-    .style("font-size", "9px")
+    .attr("y", (d, i) => yScale(d[rateCol]) - 13 - i * 12)
+    .attr("text-anchor", "middle")
+    .attr("dy", "0.35em")
+    .style("font-size", "12px")
     .style("fill", "#2c3e50")
     .style("font-weight", "600")
     .text(d => d.county);
@@ -714,14 +722,14 @@ function renderViz3() {
   legend.append("text")
     .attr("x", 0)
     .attr("y", -8)
-    .style("font-size", "9px")
+    .style("font-size", "12px")
     .style("font-weight", "bold")
     .text("Bubble size =");
 
   legend.append("text")
     .attr("x", 0)
     .attr("y", 4)
-    .style("font-size", "9px")
+    .style("font-size", "12px")
     .style("font-weight", "bold")
     .text("Death count");
 
@@ -746,8 +754,134 @@ function renderViz3() {
     .attr("x", 38)
     .attr("y", (d, i) => 18 + i * 24)
     .attr("dy", "0.35em")
-    .style("font-size", "9px")
+    .style("font-size", "12px")
     .text(d => `${d}`);
+
+  // Zoom functionality
+  const v3ZoomHandler = d3.zoom().scaleExtent([0.8, 14]).on('zoom', function(event) {
+    const t  = event.transform;
+    const xS = t.rescaleX(xScale);
+    const yS = t.rescaleY(yScale);
+
+    // Redraw X-axis
+    chartG.selectAll("g.x-axis").remove();
+    chartG.append("g")
+      .attr("class", "x-axis")
+      .attr("transform", `translate(0,${height})`)
+      .call(d3.axisBottom(xS)
+        .tickValues([0, 2.5, 5, 7.5, 10.0, 12.5, 15.0, 17.5, 20.0])
+        .tickFormat(d => d3.format(".1f")(d))
+        .tickSizeOuter(0)
+      )
+      .selectAll("text")
+      .style("font-size", "12px")
+      .style("text-anchor", "middle")
+      .attr("dy", "1em");
+
+    // Redraw Y-axis
+    chartG.selectAll("g.y-axis").remove();
+    chartG.append("g")
+      .attr("class", "y-axis")
+      .call(d3.axisLeft(yS).tickSizeOuter(0))
+      .selectAll("text")
+      .style("font-size", "12px");
+
+    // Redraw grid
+    chartG.selectAll("line.horizontalGrid").remove();
+    chartG.selectAll("line.verticalGrid").remove();
+
+    yS.ticks().forEach(t => {
+      chartG.append("line")
+        .attr("class", "horizontalGrid")
+        .attr("x1", 0).attr("x2", width)
+        .attr("y1", yS(t)).attr("y2", yS(t))
+        .style("stroke", "#ddd")
+        .style("stroke-width", 0.5)
+        .style("stroke-dasharray", "2,2")
+        .style("opacity", 0.25);
+    });
+
+    xS.ticks().forEach(t => {
+      chartG.append("line")
+        .attr("class", "verticalGrid")
+        .attr("x1", xS(t)).attr("x2", xS(t))
+        .attr("y1", 0).attr("y2", height)
+        .style("stroke", "#ddd")
+        .style("stroke-width", 0.5)
+        .style("stroke-dasharray", "2,2")
+        .style("opacity", 0.25);
+    });
+
+    // Update circles
+    circles.attr("cx", d => xS(d[facilityCol])).attr("cy", d => yS(d[rateCol]));
+
+    // Update connectors
+    connectors
+      .attr("x1", d => xS(d[facilityCol]))
+      .attr("y1", d => yS(d[rateCol]))
+      .attr("x2", (d, i) => {
+        const offset = i > 0 ? i * 30 : 10;
+        return xS(d[facilityCol]) + offset;
+      })
+      .attr("y2", (d, i) => yS(d[rateCol]) - 10 - i * 12);
+
+    // Update label backgrounds
+    labelBgs
+      .attr("x", (d, i) => {
+        const offset = i > 0 ? i * 30 : 10;
+        return xS(d[facilityCol]) + offset - 3;
+      })
+      .attr("y", (d, i) => yS(d[rateCol]) - 20 - i * 12);
+
+    // Update labels
+    labels
+      .attr("x", (d, i) => {
+        const offset = i > 0 ? i * 30 : 10;
+        return xS(d[facilityCol]) + offset + 19.5;
+      })
+      .attr("y", (d, i) => yS(d[rateCol]) - 13 - i * 12);
+
+    // Update median lines
+    chartG.selectAll("line.medianLine").remove();
+    
+    const medianFac = d3.median(viz3Data, d => d[facilityCol]);
+    const medianRate = d3.median(viz3Data, d => d[rateCol]);
+
+    chartG.append("line")
+      .attr("class", "medianLine")
+      .attr("x1", xS(medianFac))
+      .attr("x2", xS(medianFac))
+      .attr("y1", 0)
+      .attr("y2", height)
+      .style("stroke", "gray")
+      .style("stroke-dasharray", "5,5")
+      .style("opacity", 0.5);
+
+    chartG.append("line")
+      .attr("class", "medianLine")
+      .attr("x1", 0)
+      .attr("x2", width)
+      .attr("y1", yS(medianRate))
+      .attr("y2", yS(medianRate))
+      .style("stroke", "gray")
+      .style("stroke-dasharray", "5,5")
+      .style("opacity", 0.5);
+
+    // Update median labels
+    moreFacLabel
+      .attr("x", xS(medianFac) + 50)
+      .attr("y", 20);
+
+    higherSevLabel
+      .attr("x", 10)
+      .attr("y", yS(medianRate) - 50);
+  });
+
+  v3svg.call(v3ZoomHandler);
+
+  document.getElementById('z3-in').onclick    = () => v3svg.transition().duration(280).call(v3ZoomHandler.scaleBy, 1.5);
+  document.getElementById('z3-out').onclick   = () => v3svg.transition().duration(280).call(v3ZoomHandler.scaleBy, 1/1.5);
+  document.getElementById('z3-reset').onclick = () => v3svg.transition().duration(360).call(v3ZoomHandler.transform, d3.zoomIdentity);
 }
 
 // ── DATA LOADING ──────────────────────────────────────────────────────────
