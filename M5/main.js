@@ -31,6 +31,11 @@ function goTo(n) {
   if (currentSlide === 2 && !viz2Rendered) {
     requestAnimationFrame(() => renderViz2());
   }
+
+  // Render viz3 once it first becomes visible.
+  if (currentSlide === 3 && !viz3Rendered) {
+    requestAnimationFrame(() => renderViz3());
+  }
 }
 
 btnBack.addEventListener('click', () => goTo(currentSlide - 1));
@@ -122,6 +127,9 @@ const SEG_SIDE = {
 const END_DY = { ers1: -7, ers2: +12, ers3: -5, ers4: +5 };
 
 let viz2Rendered = false;
+
+let viz3Rendered = false;
+let viz3Data = null;
 
 // Refs for zoom updates
 const v2refs = { lines: {}, circs: {}, endLbls: {}, segHits: {}, dotLbls: {}, segLbls: {} };
@@ -430,3 +438,330 @@ function tipMove(evt) {
 }
 
 function tipHide() { tip.classList.remove('on'); }
+
+// VISUALIZATION 3
+// Mental Health Facilities vs Opioid Mortality
+
+const v3refs = { circles: {}, labels: {}, connectors: {} };
+let v3zoom;
+
+function renderViz3() {
+  viz3Rendered = true;
+
+  if (!viz3Data || viz3Data.length === 0) {
+    console.warn('No data available for Viz3');
+    return;
+  }
+
+  const svgEl = document.getElementById('viz3-svg');
+  const rect  = svgEl.getBoundingClientRect();
+  const W_px  = rect.width  > 0 ? rect.width  : 800;
+  const H_px  = rect.height > 0 ? rect.height : 600;
+
+  const facilityCol = "Number of Mental Health Facilities (As of March 2023)";
+  const rateCol = "Crude Opioid Death Rate (2018-2021)";
+  const countCol = "Opioid Death Count (2018-2021)";
+
+  const margin = { top: 32, right: 96, bottom: 60, left: 70 };
+  const width = W_px - margin.left - margin.right;
+  const height = H_px - margin.top - margin.bottom;
+
+  const v3svg = d3.select('#viz3-svg')
+    .attr('viewBox', `0 0 ${W_px} ${H_px}`)
+    .attr('preserveAspectRatio', 'xMidYMid meet');
+
+  const chartG = v3svg.append('g')
+    .attr('transform', `translate(${margin.left},${margin.top})`);
+
+  const v3tooltip = d3.select("body").append("div")
+    .attr("class", "tooltip-viz3")
+    .style("opacity", 0)
+    .style("position", "absolute")
+    .style("background-color", "white")
+    .style("border", "1px solid #ccc")
+    .style("padding", "8px 12px")
+    .style("border-radius", "4px")
+    .style("font-size", "12px")
+    .style("pointer-events", "none")
+    .style("z-index", "1000");
+
+  const xMax = d3.max(viz3Data, d => d[facilityCol]);
+  const xScale = d3.scaleLinear()
+    .domain([-1, xMax + 1])
+    .range([0, width]);
+
+  const yScale = d3.scaleLinear()
+    .domain([0, d3.max(viz3Data, d => d[rateCol])])
+    .range([height, 0]);
+
+  const sizeScale = d3.scaleSqrt()
+    .domain([0, d3.max(viz3Data, d => d[countCol])])
+    .range([4, 24]);
+
+  // X Axis
+  chartG.append("g")
+    .attr("transform", `translate(0,${height})`)
+    .call(d3.axisBottom(xScale)
+      .tickValues([0, 2.5, 5, 7.5, 10.0, 12.5, 15.0, 17.5, 20.0])
+      .tickFormat(d => d3.format(".1f")(d))
+      .tickSizeOuter(0)
+    )
+    .selectAll("text")
+    .style("font-size", "12px")
+    .style("text-anchor", "middle")
+    .attr("dy", "1em");
+
+  // Y Axis
+  chartG.append("g")
+    .call(d3.axisLeft(yScale)
+      .ticks(10)
+      .tickSizeOuter(0)
+    )
+    .selectAll("text")
+    .style("font-size", "12px");
+
+  // Horizontal grid
+  chartG.selectAll("line.horizontalGrid")
+    .data(yScale.ticks())
+    .enter()
+    .append("line")
+    .attr("class", "horizontalGrid")
+    .attr("x1", 0)
+    .attr("x2", width)
+    .attr("y1", d => yScale(d))
+    .attr("y2", d => yScale(d))
+    .style("stroke", "#ddd")
+    .style("stroke-width", 0.5)
+    .style("stroke-dasharray", "2,2")
+    .style("opacity", 0.25);
+
+  // Vertical grid
+  chartG.selectAll("line.verticalGrid")
+    .data(xScale.ticks())
+    .enter()
+    .append("line")
+    .attr("class", "verticalGrid")
+    .attr("x1", d => xScale(d))
+    .attr("x2", d => xScale(d))
+    .attr("y1", 0)
+    .attr("y2", height)
+    .style("stroke", "#ddd")
+    .style("stroke-width", 0.5)
+    .style("stroke-dasharray", "2,2")
+    .style("opacity", 0.25);
+
+  // Median lines
+  const medianFac = d3.median(viz3Data, d => d[facilityCol]);
+  const medianRate = d3.median(viz3Data, d => d[rateCol]);
+
+  chartG.append("line")
+    .attr("x1", xScale(medianFac))
+    .attr("x2", xScale(medianFac))
+    .attr("y1", 0)
+    .attr("y2", height)
+    .style("stroke", "gray")
+    .style("stroke-dasharray", "5,5")
+    .style("opacity", 0.5);
+
+  chartG.append("line")
+    .attr("x1", 0)
+    .attr("x2", width)
+    .attr("y1", yScale(medianRate))
+    .attr("y2", yScale(medianRate))
+    .style("stroke", "gray")
+    .style("stroke-dasharray", "5,5")
+    .style("opacity", 0.5);
+
+  chartG.append("text")
+    .attr("x", xScale(medianFac) + 50)
+    .attr("y", 20)
+    .style("font-size", "11px")
+    .style("fill", "gray")
+    .style("opacity", 0.7)
+    .text("More facilities");
+
+  chartG.append("text")
+    .attr("x", 10)
+    .attr("y", yScale(medianRate) - 10)
+    .style("font-size", "11px")
+    .style("fill", "gray")
+    .style("opacity", 0.7)
+    .text("Higher severity");
+
+  // Axis labels
+  chartG.append("text")
+    .attr("text-anchor", "middle")
+    .attr("x", width / 2)
+    .attr("y", height + margin.bottom - 15)
+    .style("font-size", "12px")
+    .text("Mental Health Facilities (2023)");
+
+  chartG.append("text")
+    .attr("text-anchor", "middle")
+    .attr("transform", "rotate(-90)")
+    .attr("y", -margin.left + 15)
+    .attr("x", -height / 2)
+    .style("font-size", "12px")
+    .text("Crude Opioid Death Rate (2018–2021)");
+
+  // High-value counties for labeling
+  const topRate = viz3Data.sort((a, b) => b[rateCol] - a[rateCol]).slice(0, 2);
+  const topCount = viz3Data.sort((a, b) => b[countCol] - a[countCol]).slice(0, 2);
+  const topFacility = viz3Data.sort((a, b) => b[facilityCol] - a[facilityCol]).slice(0, 1);
+  const toLabel = [...new Set([...topRate, ...topCount, ...topFacility])].slice(0, 4);
+
+  // Circles
+  const circles = chartG.selectAll("circle.v3-dot")
+    .data(viz3Data)
+    .enter()
+    .append("circle")
+    .attr("class", "v3-dot")
+    .attr("cx", d => xScale(d[facilityCol]))
+    .attr("cy", d => yScale(d[rateCol]))
+    .attr("r", d => sizeScale(d[countCol]))
+    .style("fill", "#4F9AD1")
+    .style("stroke", "black")
+    .style("stroke-width", 1)
+    .on("mouseover", (event, d) => {
+      v3tooltip.transition()
+        .duration(200)
+        .style("opacity", 0.9);
+      v3tooltip.html(`<strong>${d.county}</strong><br/>Facilities: ${d[facilityCol]}<br/>Death Rate: ${d[rateCol]}<br/>Death Count: ${d[countCol]}`)
+        .style("left", (event.pageX + 5) + "px")
+        .style("top", (event.pageY - 28) + "px");
+    })
+    .on("mouseout", () => {
+      v3tooltip.transition()
+        .duration(500)
+        .style("opacity", 0);
+    });
+
+  // Force simulation for label positioning
+  const simulation = d3.forceSimulation(viz3Data)
+    .force("x", d3.forceX(d => xScale(d[facilityCol])).strength(0.5))
+    .force("y", d3.forceY(d => yScale(d[rateCol])).strength(0.5))
+    .force("collide", d3.forceCollide(d => sizeScale(d[countCol]) + 2).strength(0.8))
+    .on("tick", () => {
+      circles
+        .attr("cx", d => d.x)
+        .attr("cy", d => d.y);
+    });
+
+  simulation.stop();
+  for (let i = 0; i < 300; ++i) simulation.tick();
+
+  // Connectors for labels
+  chartG.selectAll("line.v3-connector")
+    .data(toLabel)
+    .enter()
+    .append("line")
+    .attr("class", "v3-connector")
+    .attr("x1", d => xScale(d[facilityCol]))
+    .attr("y1", d => yScale(d[rateCol]))
+    .attr("x2", (d, i) => {
+      const offset = i > 0 ? i * 30 : 10;
+      return xScale(d[facilityCol]) + offset;
+    })
+    .attr("y2", (d, i) => yScale(d[rateCol]) - 10 - i * 12)
+    .style("stroke", "#666")
+    .style("stroke-width", 1)
+    .style("opacity", 0.5)
+    .style("stroke-dasharray", "3,3");
+
+  // Label backgrounds
+  chartG.selectAll("rect.v3-label-bg")
+    .data(toLabel)
+    .enter()
+    .append("rect")
+    .attr("class", "v3-label-bg")
+    .attr("x", (d, i) => {
+      const offset = i > 0 ? i * 30 : 10;
+      return xScale(d[facilityCol]) + offset - 3;
+    })
+    .attr("y", (d, i) => yScale(d[rateCol]) - 20 - i * 12)
+    .attr("width", 45)
+    .attr("height", 14)
+    .style("fill", "white")
+    .style("stroke", "#ccc")
+    .style("stroke-width", 0.5)
+    .style("opacity", 0.9);
+
+  // Labels
+  chartG.selectAll("text.v3-label")
+    .data(toLabel)
+    .enter()
+    .append("text")
+    .attr("class", "v3-label")
+    .attr("x", (d, i) => {
+      const offset = i > 0 ? i * 30 : 10;
+      return xScale(d[facilityCol]) + offset;
+    })
+    .attr("y", (d, i) => yScale(d[rateCol]) - 8 - i * 12)
+    .attr("text-anchor", "start")
+    .style("font-size", "9px")
+    .style("fill", "#2c3e50")
+    .style("font-weight", "600")
+    .text(d => d.county);
+
+  // Legend
+  const legendCounts = [25, 100, 250];
+  const legendSizes = legendCounts.map(c => sizeScale(c));
+
+  const legend = chartG.append("g")
+    .attr("id", "viz3-legend-svg")
+    .attr("transform", `translate(${width - 80}, 30)`);
+
+  legend.append("text")
+    .attr("x", 0)
+    .attr("y", -8)
+    .style("font-size", "9px")
+    .style("font-weight", "bold")
+    .text("Bubble size =");
+
+  legend.append("text")
+    .attr("x", 0)
+    .attr("y", 4)
+    .style("font-size", "9px")
+    .style("font-weight", "bold")
+    .text("Death count");
+
+  legend.selectAll("circle.v3-legend")
+    .data(legendSizes)
+    .enter()
+    .append("circle")
+    .attr("class", "v3-legend")
+    .attr("cx", 15)
+    .attr("cy", (d, i) => 18 + i * 24)
+    .attr("r", d => d)
+    .style("fill", "#4F9AD1")
+    .style("stroke", "black")
+    .style("stroke-width", 0.5)
+    .style("opacity", 0.6);
+
+  legend.selectAll("text.v3-legend-label")
+    .data(legendCounts)
+    .enter()
+    .append("text")
+    .attr("class", "v3-legend-label")
+    .attr("x", 38)
+    .attr("y", (d, i) => 18 + i * 24)
+    .attr("dy", "0.35em")
+    .style("font-size", "9px")
+    .text(d => `${d}`);
+}
+
+// ── DATA LOADING ──────────────────────────────────────────────────────────
+d3.csv("../ga_state_clean.csv").then(gaData => {
+  const facilityCol = "Number of Mental Health Facilities (As of March 2023)";
+  const rateCol = "Crude Opioid Death Rate (2018-2021)";
+  const countCol = "Opioid Death Count (2018-2021)";
+
+  gaData.forEach(d => {
+    d.county = d.county.replace(" County", "");
+    d[facilityCol] = d[facilityCol] === "Suppressed" ? null : +d[facilityCol].replace("*", "");
+    d[rateCol]     = d[rateCol]     === "Suppressed" ? null : +d[rateCol].replace("*", "");
+    d[countCol]    = d[countCol]    === "Suppressed" ? null : +d[countCol].replace("*", "");
+  });
+
+  viz3Data = gaData.filter(d => d[facilityCol] != null && d[rateCol] != null && d[countCol] != null);
+});
