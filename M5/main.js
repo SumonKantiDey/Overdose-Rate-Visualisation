@@ -28,6 +28,11 @@ function goTo(n) {
   // Render viz2 once it first becomes visible.
   // requestAnimationFrame waits one paint cycle so getBoundingClientRect()
   // returns real pixel dimensions instead of 0.
+
+  if (currentSlide === 1 && !viz1Rendered) {
+    requestAnimationFrame(() => renderViz1());
+  }
+
   if (currentSlide === 2 && !viz2Rendered) {
     requestAnimationFrame(() => renderViz2());
   }
@@ -36,6 +41,22 @@ function goTo(n) {
   if (currentSlide === 3 && !viz3Rendered) {
     requestAnimationFrame(() => renderViz3());
   }
+
+  if (currentSlide === 4 && !viz4Rendered) {
+    requestAnimationFrame(() => renderViz4());
+  }
+}
+
+function cleanNumber(value) {
+  if (value === null || value === undefined) return 0;
+
+  const str = String(value).toLowerCase().trim();
+
+  if (str === "" || str === "suppressed" || str === "na" || str === "n/a") {
+    return 0;
+  }
+
+  return +str.replace(/,/g, "").replace(/\*/g, "") || 0;
 }
 
 btnBack.addEventListener('click', () => goTo(currentSlide - 1));
@@ -131,10 +152,112 @@ let viz2Rendered = false;
 let viz3Rendered = false;
 let viz3Data = null;
 
+let viz1Rendered = false;
+let viz4Rendered = false;
+let viz4Data = null;
+
 // Refs for zoom updates
 const v2refs = { lines: {}, circs: {}, endLbls: {}, segHits: {}, dotLbls: {}, segLbls: {} };
 let v2isolated = null;
 let v2plotG, v2xScale, v2yScale, v2gridG, v2xAxisG, v2yAxisG, v2svg, v2zoom;
+
+function renderViz1() {
+  viz1Rendered = true;
+
+  d3.csv("../clean_drug_overdose_death.csv").then(data => {
+    const opioidCountCols = [
+      "Opioid Death Count (2010-2013)",
+      "Opioid Death Count (2014-2017)",
+      "Opioid Death Count (2018-2021)"
+    ];
+
+    const periods = ["2010-2013", "2014-2017", "2018-2021"];
+
+    const totals = periods.map((period, i) => ({
+      period,
+      deaths: d3.sum(data, d => cleanNumber(d[opioidCountCols[i]]))
+    }));
+
+    const svgEl = document.getElementById('viz1-svg');
+    const rect = svgEl.getBoundingClientRect();
+    const width = rect.width > 0 ? rect.width : 900;
+    const height = rect.height > 0 ? rect.height : 500;
+
+    const svg = d3.select("#viz1-svg")
+      .attr("viewBox", `0 0 ${width} ${height}`)
+      .attr("preserveAspectRatio", "xMidYMid meet");
+
+    svg.selectAll("*").remove();
+
+    const margin = { top: 40, right: 40, bottom: 70, left: 100 };
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.top - margin.bottom;
+
+    const g = svg.append("g")
+      .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    const x = d3.scalePoint()
+      .domain(periods)
+      .range([0, innerWidth])
+      .padding(0.5);
+
+    const y = d3.scaleLinear()
+      .domain([0, d3.max(totals, d => d.deaths)])
+      .nice()
+      .range([innerHeight, 0]);
+
+    g.append("g")
+      .attr("transform", `translate(0,${innerHeight})`)
+      .call(d3.axisBottom(x));
+
+    g.append("g")
+      .call(d3.axisLeft(y));
+
+    const line = d3.line()
+      .x(d => x(d.period))
+      .y(d => y(d.deaths));
+
+    g.append("path")
+      .datum(totals)
+      .attr("class", "line")
+      .attr("stroke", "steelblue")
+      .attr("d", line);
+
+    g.selectAll(".dot1")
+      .data(totals)
+      .enter()
+      .append("circle")
+      .attr("cx", d => x(d.period))
+      .attr("cy", d => y(d.deaths))
+      .attr("r", 5)
+      .attr("fill", "steelblue");
+
+    g.selectAll(".label1")
+      .data(totals)
+      .enter()
+      .append("text")
+      .attr("x", d => x(d.period))
+      .attr("y", d => y(d.deaths) - 10)
+      .attr("text-anchor", "middle")
+      .style("font-size", "12px")
+      .text(d => d.deaths);
+
+    svg.append("text")
+      .attr("class", "axis-label")
+      .attr("x", width / 2)
+      .attr("y", height - 20)
+      .attr("text-anchor", "middle")
+      .text("Time Period");
+
+    svg.append("text")
+      .attr("class", "axis-label")
+      .attr("transform", "rotate(-90)")
+      .attr("x", -height / 2)
+      .attr("y", 22)
+      .attr("text-anchor", "middle")
+      .text("Total Opioid Deaths");
+  }).catch(err => console.error("Error loading viz1 data:", err));
+}
 
 function renderViz2() {
   viz2Rendered = true;
@@ -882,6 +1005,242 @@ function renderViz3() {
   document.getElementById('z3-in').onclick    = () => v3svg.transition().duration(280).call(v3ZoomHandler.scaleBy, 1.5);
   document.getElementById('z3-out').onclick   = () => v3svg.transition().duration(280).call(v3ZoomHandler.scaleBy, 1/1.5);
   document.getElementById('z3-reset').onclick = () => v3svg.transition().duration(360).call(v3ZoomHandler.transform, d3.zoomIdentity);
+}
+
+function renderViz4() {
+  viz4Rendered = true;
+
+  Promise.all([
+    d3.csv("../clean_drug_overdose_death.csv"),
+    d3.json("https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json")
+  ]).then(([data, us]) => {
+    const bachelorsCol =
+      "Percent of Population Aged 25+ who Have a Bachelor's Degree or More (2017-2021)";
+    const opioidRateCol =
+      "Crude Opioid Death Rate (2018-2021)";
+
+    const svgEl = document.getElementById('viz4-svg');
+    const rect = svgEl.getBoundingClientRect();
+    const width = rect.width > 0 ? rect.width : 1200;
+    const height = rect.height > 0 ? rect.height : 700;
+
+    const svg = d3.select("#viz4-svg")
+      .attr("viewBox", `0 0 ${width} ${height}`)
+      .attr("preserveAspectRatio", "xMidYMid meet");
+
+    svg.selectAll("*").remove();
+
+    let tooltip = d3.select("#viz4-tooltip");
+    if (tooltip.empty()) {
+      tooltip = d3.select("body")
+        .append("div")
+        .attr("id", "viz4-tooltip")
+        .attr("class", "tooltip");
+    }
+
+    const dataByGEOID = new Map();
+    data.forEach(d => {
+      const geoid = String(d.GEOID).padStart(5, "0");
+      dataByGEOID.set(geoid, {
+        name: d.NAME,
+        bachelors: cleanNumber(d[bachelorsCol]),
+        opioidRate: cleanNumber(d[opioidRateCol])
+      });
+    });
+
+    const counties = topojson.feature(us, us.objects.counties).features;
+    const georgiaCounties = counties.filter(d => String(d.id).startsWith("13"));
+
+    const projection = d3.geoMercator();
+    const path = d3.geoPath(projection);
+
+    projection.fitSize(
+      [width * 0.34, height * 0.72],
+      {
+        type: "FeatureCollection",
+        features: georgiaCounties
+      }
+    );
+
+    const leftMapX = width * 0.06;
+    const rightMapX = width * 0.56;
+    const mapY = 80;
+
+    const mapGroup1 = svg.append("g")
+      .attr("transform", `translate(${leftMapX},${mapY})`);
+
+    const mapGroup2 = svg.append("g")
+      .attr("transform", `translate(${rightMapX},${mapY})`);
+
+    const bachelorsMax = d3.max(georgiaCounties, d => {
+      const row = dataByGEOID.get(String(d.id));
+      return row ? row.bachelors : 0;
+    }) || 1;
+
+    const opioidRateMax = d3.max(georgiaCounties, d => {
+      const row = dataByGEOID.get(String(d.id));
+      return row ? row.opioidRate : 0;
+    }) || 1;
+
+    const bachelorsColor = d3.scaleSequential()
+      .domain([0, bachelorsMax])
+      .interpolator(d3.interpolateBlues);
+
+    const opioidColor = d3.scaleSequential()
+      .domain([0, opioidRateMax])
+      .interpolator(d3.interpolateBlues);
+
+    svg.append("text")
+      .attr("class", "map-title")
+      .attr("x", leftMapX + width * 0.17)
+      .attr("y", 50)
+      .text("Bachelor's Degree Share (2017-2021)");
+
+    svg.append("text")
+      .attr("class", "map-title")
+      .attr("x", rightMapX + width * 0.17)
+      .attr("y", 50)
+      .text("Crude Opioid Death Rate (2018-2021)");
+
+    const showTip = (event, row) => {
+      tooltip
+        .style("opacity", 1)
+        .html(`
+          <strong>${row ? row.name : "Unknown County"}</strong><br>
+          Bachelor's %: ${row ? row.bachelors.toFixed(2) : "N/A"}<br>
+          Opioid Death Rate: ${row ? row.opioidRate.toFixed(2) : "N/A"} per 100k
+        `)
+        .style("left", (event.clientX + 12) + "px")
+        .style("top", (event.clientY - 20) + "px");
+    };
+
+    const hideTip = () => tooltip.style("opacity", 0);
+
+    mapGroup1.selectAll("path")
+      .data(georgiaCounties)
+      .enter()
+      .append("path")
+      .attr("class", "county")
+      .attr("d", path)
+      .attr("fill", d => {
+        const row = dataByGEOID.get(String(d.id));
+        return row ? bachelorsColor(row.bachelors) : "#eee";
+      })
+      .on("mousemove", function(event, d) {
+        showTip(event, dataByGEOID.get(String(d.id)));
+      })
+      .on("mouseleave", hideTip);
+
+    mapGroup1.selectAll(".label-left")
+      .data(georgiaCounties)
+      .enter()
+      .append("text")
+      .attr("class", "county-label")
+      .attr("transform", d => {
+        const centroid = path.centroid(d);
+        return `translate(${centroid[0]},${centroid[1]})`;
+      })
+      .text(d => {
+        const row = dataByGEOID.get(String(d.id));
+        if (!row || row.opioidRate === 0) return "";
+        return row.opioidRate.toFixed(1);
+      });
+
+    mapGroup2.selectAll("path")
+      .data(georgiaCounties)
+      .enter()
+      .append("path")
+      .attr("class", "county")
+      .attr("d", path)
+      .attr("fill", d => {
+        const row = dataByGEOID.get(String(d.id));
+        return row ? opioidColor(row.opioidRate) : "#eee";
+      })
+      .on("mousemove", function(event, d) {
+        showTip(event, dataByGEOID.get(String(d.id)));
+      })
+      .on("mouseleave", hideTip);
+
+    mapGroup2.selectAll(".label-right")
+      .data(georgiaCounties)
+      .enter()
+      .append("text")
+      .attr("class", "county-label")
+      .attr("transform", d => {
+        const centroid = path.centroid(d);
+        return `translate(${centroid[0]},${centroid[1]})`;
+      })
+      .text(d => {
+        const row = dataByGEOID.get(String(d.id));
+        return row ? row.opioidRate.toFixed(1) : "";
+      });
+
+    function drawLegend(svg, x, y, legendWidth, legendHeight, colorScale, maxValue, label, gradientId) {
+      const defs = svg.select("defs").empty() ? svg.append("defs") : svg.select("defs");
+
+      const gradient = defs.append("linearGradient")
+        .attr("id", gradientId)
+        .attr("x1", "0%")
+        .attr("x2", "100%")
+        .attr("y1", "0%")
+        .attr("y2", "0%");
+
+      const steps = 10;
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        gradient.append("stop")
+          .attr("offset", `${t * 100}%`)
+          .attr("stop-color", colorScale(t * maxValue));
+      }
+
+      svg.append("rect")
+        .attr("x", x)
+        .attr("y", y)
+        .attr("width", legendWidth)
+        .attr("height", legendHeight)
+        .style("fill", `url(#${gradientId})`)
+        .style("stroke", "#999");
+
+      const legendScale = d3.scaleLinear()
+        .domain([0, maxValue])
+        .range([0, legendWidth]);
+
+      svg.append("g")
+        .attr("transform", `translate(${x},${y + legendHeight})`)
+        .call(d3.axisBottom(legendScale).ticks(5));
+
+      svg.append("text")
+        .attr("class", "legend-label")
+        .attr("x", x + legendWidth / 2)
+        .attr("y", y - 8)
+        .attr("text-anchor", "middle")
+        .text(label);
+    }
+
+    drawLegend(
+      svg,
+      leftMapX + 60,
+      height - 45,
+      220,
+      14,
+      bachelorsColor,
+      bachelorsMax,
+      "Bachelor's Degree Share (%)",
+      "bachelors-gradient"
+    );
+
+    drawLegend(
+      svg,
+      rightMapX + 60,
+      height - 45,
+      220,
+      14,
+      opioidColor,
+      opioidRateMax,
+      "Opioid Death Rate per 100k",
+      "opioid-gradient"
+    );
+  }).catch(err => console.error("Error loading viz4 data:", err));
 }
 
 // ── DATA LOADING ──────────────────────────────────────────────────────────
