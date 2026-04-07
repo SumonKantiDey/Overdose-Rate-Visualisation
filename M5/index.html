@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>American Opioid Crisis</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/topojson-client@3"></script>  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -31,15 +31,11 @@
         <p>The loss never feels less severe.</p>
       </div>
     </div>
-    <div class="pane-viz">
-      <!--
-        VISUAL 1 PLACEHOLDER
-      -->
-      <div class="viz-placeholder">
-        <span class="viz-placeholder-label">Visual 1</span>
-        <span class="viz-placeholder-sub">Overall Georgia OD trend</span>
+      <div class="pane-viz">
+        <div class="viz1-title">Total Opioid Deaths Over Time</div>
+        <div class="viz1-sub">Georgia county totals by reporting period</div>
+        <svg id="viz1-svg"></svg>
       </div>
-    </div>
   </div>
 
   <!-- Stanza + Visual 2 -->
@@ -114,12 +110,13 @@
       </div>
     </div>
     <div class="pane-viz">
-      <!--
-        VISUAL 4 PLACEHOLDER
-      -->
-      <div class="viz-placeholder">
-        <span class="viz-placeholder-label">Visual 4</span>
-        <span class="viz-placeholder-sub">Education rate vs. overdose rate</span>
+      <div class="viz4-title">Georgia Counties: Education and Opioid Death Rates</div>
+      <div class="viz4-sub">Left: Bachelor's degree share | Right: Crude opioid death rate</div>
+      <div class="viz4-wrap">
+        <svg id="viz4-svg"></svg>
+      </div>
+      <div class="viz4-foot">
+        County labels show opioid death rate values where available.
       </div>
     </div>
   </div>
