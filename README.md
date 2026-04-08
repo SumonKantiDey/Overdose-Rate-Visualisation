@@ -81,6 +81,6 @@ This project was created by:
 - **Dennis Sun**
 - **Avery Mattoon**
 
-**Course:** CS 541 - Data Visualization (Spring 2026)
+**Course:** CS 441/541 - Information Visualization (Spring 2026)
 
 ---
